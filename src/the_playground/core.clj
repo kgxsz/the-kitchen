@@ -2,23 +2,23 @@
   (:require [org.httpkit.server :refer [run-server]]
             [bidi.ring :refer (make-handler)]))
 
-(defn root-handler [req]
+(defn api-handler [req]
   {:status  200
    :headers {"Content-Type" "text/html"}
-   :body    "Root!"})
+   :body    "Welcome to the API!"})
 
-(defn hello-handler [req]
-  {:status  200
+(defn not-found-handler [req]
+  {:status  404
    :headers {"Content-Type" "text/html"}
-   :body    "Hello!"})
+   :body    "Not found."})
 
 (def routes
- ["/" {"" :root
-       "hello" :hello}])
+ ["/" [["api" :api]
+       [true  :not-found]]])
 
 (def handler-fns
-  {:root root-handler
-   :hello hello-handler})
+  {:api       api-handler
+   :not-found not-found-handler})
 
 (defn -main [& args]
   (run-server (make-handler routes handler-fns) {:port 8080}))
