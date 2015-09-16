@@ -1,6 +1,8 @@
 (ns the-playground.core
-  (:require [org.httpkit.server :refer [run-server]]
-            [bidi.ring :refer (make-handler)]))
+  (:require [org.httpkit.server :as http-server]
+            [bidi.ring :refer (make-handler)]
+            [clojure.tools.nrepl.server :as nrepl-server]
+            [cider.nrepl :refer (cider-nrepl-handler)]))
 
 (defn api-handler [req]
   {:status  200
@@ -17,8 +19,9 @@
        [true  :not-found]]])
 
 (def handler-fns
-  {:api       api-handler
+  {:api      api-handler
    :not-found not-found-handler})
 
 (defn -main [& args]
-  (run-server (make-handler routes handler-fns) {:port 8080}))
+  (nrepl-server/start-server :port 8088 :handler cider-nrepl-handler)
+  (http-server/run-server (make-handler routes handler-fns) {:port 8080}))
