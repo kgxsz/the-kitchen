@@ -58,25 +58,19 @@
     :http-server (make-http-server port)))
 
 
-(def system nil)
+(def system (atom nil))
 
+(defn init-system [s]
+  (reset! s (make-system {:port 8080})))
 
-(defn init []
-  (alter-var-root #'system (constantly (make-system {:port 8080}))))
+(defn start-system [s] (swap! s component/start))
 
-
-(defn start-system
-  []
-  (alter-var-root #'system component/start))
-
-
-(defn stop-system []
-  (alter-var-root #'system
-                  (fn [s] (when s (component/stop s)))))
-
+(defn stop-system [s] (swap! s component/stop))
 
 (defn -main [& args]
   (let [nrepl-port 8088
         http-port  8080]
+    (info "Starting nREPL server on port" nrepl-port)
     (nrepl-server/start-server :port nrepl-port :handler cider-nrepl-handler)
-    (info "Started nREPL server on port" nrepl-port)))
+    (init-system system)
+    (start-system system)))
