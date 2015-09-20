@@ -4,6 +4,7 @@
             [bidi.ring :refer (make-handler)]
             [clojure.tools.nrepl.server :as nrepl-server]
             [cider.nrepl :refer (cider-nrepl-handler)]
+            [clojure.tools.namespace.repl :refer (refresh)]
             [taoensso.timbre :refer [info]]))
 
 
@@ -13,64 +14,73 @@
    :headers {"Content-Type" "text/html"}
    :body    "Welcome to the API!"})
 
-
 (defn not-found-handler [req]
   (info "Request to unknown route")
   {:status  404
    :headers {"Content-Type" "text/html"}
    :body    "Not found."})
 
-
 (def routes
  ["/" [["api" :api]
        [true  :not-found]]])
-
 
 (def handler-fns
   {:api       api-handler
    :not-found not-found-handler})
 
+(def system (atom nil))
 
-(defrecord HTTPServer [port server]
+(defrecord HTTPServer [port stop-fn]
   component/Lifecycle
 
   (start [component]
-    (let [handler (make-handler routes handler-fns)
-          http-server (http-server/run-server handler {:port port :join? false})]
-      (info "Started http server on port" port)
-      (assoc component :http-server http-server)))
+    (if stop-fn
+      (do
+        (info "HTTP server is already running on" port)
+        component)
+      (let [handler (make-handler routes handler-fns)
+            opts {:port port :join? false}]
+        (info "Starting HTTP server on port" port)
+        (assoc component :stop-fn (http-server/run-server handler opts)))))
 
   (stop [component]
-    (when-let [http-server (:http-server component)]
-      (http-server :timeout 500)
-      (info "Stopped http server")
-      (dissoc component :http-server))))
+    (if stop-fn
+      (do
+        (info "Stopping HTTP server")
+        (stop-fn :timeout 500)
+        (assoc component :stop-fn nil))
+      (do
+        (info "HTTP server is not running")
+        component))))
 
 
 (defn make-http-server
   [port]
   (map->HTTPServer {:port port}))
 
-
 (defn make-system
-  [{:keys [port] :as config}]
-  (component/system-map
-    :http-server (make-http-server port)))
+  []
+  (let [http-port 8080]
+    (component/system-map
+     :http-server (make-http-server http-port))))
 
+(defn start-system
+  []
+  (reset! system (make-system))
+  (swap! system component/start))
 
-(def system (atom nil))
+(defn stop-system
+  []
+  (swap! system component/stop))
 
-(defn init-system [s]
-  (reset! s (make-system {:port 8080})))
+(defn restart-system
+  []
+  (stop-system)
+  (refresh :after 'the-playground.core/start-system))
 
-(defn start-system [s] (swap! s component/start))
-
-(defn stop-system [s] (swap! s component/stop))
-
-(defn -main [& args]
-  (let [nrepl-port 8088
-        http-port  8080]
-    (info "Starting nREPL server on port" nrepl-port)
-    (nrepl-server/start-server :port nrepl-port :handler cider-nrepl-handler)
-    (init-system system)
-    (start-system system)))
+(defn -main
+  []
+  (info "Starting nREPL server on port 8088")
+  (nrepl-server/start-server :port 8088 :handler cider-nrepl-handler)
+  (info "Starting system")
+  (start-system))

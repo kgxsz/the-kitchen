@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [com.taoensso/timbre "4.1.1"]
                  [com.stuartsierra/component "0.2.3"]
+                 [org.clojure/tools.namespace "0.2.11"]
                  [ring/ring-core "1.4.0"]
                  [http-kit "2.1.19"]
                  [bidi "1.20.3"]]
