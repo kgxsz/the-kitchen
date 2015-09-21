@@ -1,5 +1,7 @@
 (ns the-playground.core
-  (:require [com.stuartsierra.component :as component]
+  (:require [yoyo :as y]
+            [yoyo.core :as yc]
+            [yoyo.system :as ys]
             [org.httpkit.server :as http-server]
             [bidi.ring :refer (make-handler)]
             [clojure.tools.nrepl.server :as nrepl-server]
@@ -7,80 +9,49 @@
             [clojure.tools.namespace.repl :refer (refresh)]
             [taoensso.timbre :refer [info]]))
 
-
 (defn api-handler [req]
   (info "Request to /api")
   {:status  200
    :headers {"Content-Type" "text/html"}
    :body    "Welcome to the API!"})
 
-(defn not-found-handler [req]
+(defn not-found-handler
+  [req]
   (info "Request to unknown route")
   {:status  404
    :headers {"Content-Type" "text/html"}
    :body    "Not found."})
 
 (def routes
- ["/" [["api" :api]
-       [true  :not-found]]])
+  ["/" [["api" :api]
+        [true  :not-found]]])
 
 (def handler-fns
   {:api       api-handler
    :not-found not-found-handler})
 
-(def system (atom nil))
+(defn start-http-server!
+  [{:keys [handler opts] :as http-server}]
+  (let [stop-fn! (http-server/run-server handler opts)]
+    (info "Starting HTTP server on port" (:port opts))
+    (yc/->component http-server
+                    (fn []
+                      (info "Stopping HTTP server")
+                      (stop-fn! :timeout 500)))))
 
-(defrecord HTTPServer [port stop-fn]
-  component/Lifecycle
-
-  (start [component]
-    (if stop-fn
-      (do
-        (info "HTTP server is already running on" port)
-        component)
-      (let [handler (make-handler routes handler-fns)
-            opts {:port port :join? false}]
-        (info "Starting HTTP server on port" port)
-        (assoc component :stop-fn (http-server/run-server handler opts)))))
-
-  (stop [component]
-    (if stop-fn
-      (do
-        (info "Stopping HTTP server")
-        (stop-fn :timeout 500)
-        (assoc component :stop-fn nil))
-      (do
-        (info "HTTP server is not running")
-        component))))
-
-
-(defn make-http-server
-  [port]
-  (map->HTTPServer {:port port}))
-
-(defn make-system
+(defn make-Δ-http-server
   []
-  (let [http-port 8080]
-    (component/system-map
-     :http-server (make-http-server http-port))))
+  (ys/named
+    (fn [] (ys/->dep (start-http-server! {:handler (make-handler routes handler-fns)
+                                         :opts    {:port 8080 :join? false}})))
+    :http-server))
 
-(defn start-system
-  []
-  (reset! system (make-system))
-  (swap! system component/start))
+(defn make-system []
+  (ys/make-system #{(make-Δ-http-server)}))
 
-(defn stop-system
-  []
-  (swap! system component/stop))
-
-(defn restart-system
-  []
-  (stop-system)
-  (refresh :after 'the-playground.core/start-system))
-
-(defn -main
-  []
+(defn -main []
   (info "Starting nREPL server on port 8088")
   (nrepl-server/start-server :port 8088 :handler cider-nrepl-handler)
+  (y/set-system-fn! #'make-system)
   (info "Starting system")
-  (start-system))
+  (y/start!))
