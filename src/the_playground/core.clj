@@ -2,11 +2,10 @@
   (:require [yoyo :as y]
             [yoyo.core :as yc]
             [yoyo.system :as ys]
-            [org.httpkit.server :as http-server]
+            [org.httpkit.server :refer [run-server]]
             [bidi.ring :refer (make-handler)]
             [clojure.tools.nrepl.server :as nrepl-server]
             [cider.nrepl :refer (cider-nrepl-handler)]
-            [clojure.tools.namespace.repl :refer (refresh)]
             [taoensso.timbre :refer [info]]))
 
 (defn api-handler [req]
@@ -32,7 +31,7 @@
 
 (defn start-http-server!
   [{:keys [handler opts] :as http-server}]
-  (let [stop-fn! (http-server/run-server handler opts)]
+  (let [stop-fn! (run-server handler opts)]
     (info "Starting HTTP server on port" (:port opts))
     (yc/->component http-server
                     (fn []
@@ -42,8 +41,10 @@
 (defn make-Δ-http-server
   []
   (ys/named
-    (fn [] (ys/->dep (start-http-server! {:handler (make-handler routes handler-fns)
-                                         :opts    {:port 8080 :join? false}})))
+    (fn []
+      (ys/->dep
+        (start-http-server! {:handler (make-handler routes handler-fns)
+                             :opts    {:port 8080 :join? false}})))
     :http-server))
 
 (defn make-system []
