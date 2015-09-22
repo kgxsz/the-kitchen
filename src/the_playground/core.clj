@@ -3,7 +3,8 @@
             [yoyo.core :as yc]
             [yoyo.system :as ys]
             [org.httpkit.server :refer [run-server]]
-            [bidi.ring :refer (make-handler)]
+            [bidi.ring :refer [make-handler]]
+            [cats.core :as c]
             [clojure.tools.nrepl.server :as nrepl-server]
             [cider.nrepl :refer (cider-nrepl-handler)]
             [taoensso.timbre :refer [info]]))
@@ -29,26 +30,28 @@
   {:api       api-handler
    :not-found not-found-handler})
 
-(defn start-http-server!
-  [{:keys [handler opts] :as http-server}]
-  (let [stop-fn! (run-server handler opts)]
-    (info "Starting HTTP server on port" (:port opts))
-    (yc/->component http-server
-                    (fn []
-                      (info "Stopping HTTP server")
-                      (stop-fn! :timeout 500)))))
+(defn make-Δ-handler
+  []
+  (ys/->dep
+    (yc/->component
+      (make-handler routes handler-fns))))
 
 (defn make-Δ-http-server
   []
-  (ys/named
-    (fn []
-      (ys/->dep
-        (start-http-server! {:handler (make-handler routes handler-fns)
-                             :opts    {:port 8080 :join? false}})))
-    :http-server))
+  (c/mlet [handler (ys/ask :handler)]
+    (ys/->dep
+      (let [options {:port 8080 :join? false}
+            stop-fn! (run-server handler options)]
+        (info "Starting HTTP server on port 8080")
+        (yc/->component
+          options
+          (fn []
+            (info "Stopping HTTP server")
+            (stop-fn! :timeout 500)))))))
 
 (defn make-system []
-  (ys/make-system #{(make-Δ-http-server)}))
+  (ys/make-system #{(ys/named make-Δ-http-server :http-server)
+                    (ys/named make-Δ-handler :handler)}))
 
 (defn -main []
   (info "Starting nREPL server on port 8088")
