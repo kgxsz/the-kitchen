@@ -1,0 +1,1 @@
+{:http-server-options {:port 8080 :join? false :timeout 500}}
