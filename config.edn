@@ -1,7 +1,9 @@
 {:nomad/includes [#nomad/file "~/.nomad/the-playground.edn"]
+
  :http-server-options {:port 8080 :join? false :timeout 500}
  :password #nomad/secret [:key "8d72a0ec8fde39e9134a6bca2d8fc4f88bfae1bf65e118dc16c39abd9d8e5bb5"]
  :env "local"
+
  :nomad/environments {"development" {:env "development"}
                       "staging" {:env "staging"}
                       "production" {:env "production"}}}
