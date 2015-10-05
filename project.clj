@@ -11,6 +11,11 @@
                  [jarohen/nomad "0.8.0-beta3" :exclusions [org.clojure/clojure]]
                  [ring/ring-core "1.4.0"]
                  [http-kit "2.1.19"]
-                 [bidi "1.20.3"]]
+                 [bidi "1.20.3"]
+                 [alembic "0.3.2"]
+                 [org.clojure/tools.nrepl "0.2.11"]]
+
+  :plugins [[cider/cider-nrepl "0.9.1"]
+            [refactor-nrepl "1.1.0"]]
 
   :main the-playground.core)

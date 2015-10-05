@@ -1,4 +1,5 @@
 (ns the-playground.core
+  (:gen-class)
   (:require [yoyo :as y]
             [nomad :as n]
             [yoyo.core :as yc]
@@ -7,8 +8,6 @@
             [bidi.ring :refer [make-handler]]
             [cats.core :as c]
             [clojure.java.io :as io]
-            [clojure.tools.nrepl.server :as nrepl-server]
-            [cider.nrepl :refer (cider-nrepl-handler)]
             [taoensso.timbre :refer [info]]))
 
 (defn make-api-handler
@@ -17,7 +16,7 @@
     (info "Request to /api")
     {:status 200
      :headers {"Content-Type" "text/html"}
-     :body (str "Welcome to the API! The secret password is: " (:password config))}))
+     :body (str "Welcome to the API!")}))
 
 (defn make-not-found-handler
   []
@@ -74,8 +73,6 @@
                     (ys/named make-Δ-http-server :http-server)}))
 
 (defn -main []
-  (info "Starting nREPL server on port 8088")
-  (nrepl-server/start-server :port 8088 :handler cider-nrepl-handler)
   (y/set-system-fn! #'make-system)
   (info "Starting system")
   (y/start!))
