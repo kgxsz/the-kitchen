@@ -9,9 +9,11 @@
                  [jarohen/nomad "0.8.0-beta3"
                   :exclusions [org.clojure/clojure org.clojure/tools.nrepl]]
                  [http-kit "2.1.19"]
-                 [bidi "1.20.3"]])
+                 [bidi "1.20.3"]
+                 [adzerk/boot-test "1.0.4" :scope "test"]])
 
-(require '[the-playground.core])
+(require '[the-playground.core]
+         '[adzerk.boot-test :as bt])
 
 (deftask build
   "Build the uberjar"
@@ -32,6 +34,12 @@
       (def dirs (get-env :directories))
       (apply clojure.tools.namespace.repl/set-refresh-dirs dirs))
     fileset))
+
+(deftask test
+  "Runs tests"
+  []
+  (set-env! :source-paths #{"src" "test"})
+  (bt/test))
 
 (deftask develop
   []
