@@ -1,26 +1,17 @@
 (set-env!
  :source-paths #{"src"}
+ :resource-paths #{"resources"}
  :dependencies '[[org.clojure/clojure "1.7.0"]
-                 #_[com.taoensso/timbre "4.1.1"]
-                 #_[org.clojure/tools.namespace "0.2.11"]
-                 #_[jarohen/yoyo "0.0.6-beta2"]
-                 #_[jarohen/nomad "0.8.0-beta3" :exclusions [org.clojure/clojure]]
-                 #_[ring/ring-core "1.4.0"]
+                 [org.clojure/tools.logging "0.3.1"]
+                 [log4j/log4j "1.2.16"
+                  :exclusions [javax.mail/mail javax.jms/jms com.sun.jdmk/jmxtools com.sun.jmx/jmxri]]
+                 [jarohen/yoyo "0.0.6-beta2"]
+                 [jarohen/nomad "0.8.0-beta3"
+                  :exclusions [org.clojure/clojure org.clojure/tools.nrepl]]
                  [http-kit "2.1.19"]
                  [bidi "1.20.3"]])
 
 (require '[the-playground.core])
-
-#_(deftask run []
-  (with-pre-wrap fileset
-
-    (with-bindings {#'*data-readers* *data-readers*}
-      (boot.core/load-data-readers!) ;; loads them into the #'clojure.core/*data-readers* var
-      (the-playground.core/-main)
-      (def dirs (get-env :directories))
-      (apply clojure.tools.namespace.repl/set-refresh-dirs dirs))
-
-    fileset))
 
 (deftask build
   "Build the uberjar"
@@ -31,22 +22,21 @@
    (uber)
    (jar :main 'the-playground.core)))
 
-(deftask run []
+(deftask run
+  []
+  "Kick off the main function"
   (with-pre-wrap fileset
-    (the-playground.core/-main)
+    (with-bindings {#'*data-readers* *data-readers*}
+      (boot.core/load-data-readers!)
+      (the-playground.core/-main)
+      (def dirs (get-env :directories))
+      (apply clojure.tools.namespace.repl/set-refresh-dirs dirs))
     fileset))
 
 (deftask develop
   []
+  "Setup a development environmet"
   (comp
    (repl :server true :port 8088)
    (run)
    (wait)))
-
-;; 1) boot run
-;; 2) boot repl -c -p 8088
-;; 3) (boot.core/load-data-readers!)
-;; 4) (load-file "src/the_playground/core.clj")
-;; 5) (the-playground.core/-main)
-;; 6) (def dirs (get-env :directories))
-;; 7) (apply clojure.tools.namespace.repl/set-refresh-dirs dirs)

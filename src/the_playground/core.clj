@@ -1,27 +1,27 @@
 (ns the-playground.core
   (:gen-class)
-  (:require #_[taoensso.timbre :refer [info]]
-            [bidi.ring :refer [make-handler]]
-            #_[cats.core :as c]
-            #_[clojure.java.io :as io]
-            #_[nomad :as n]
+  (:require [bidi.ring :refer [make-handler]]
+            [cats.core :as c]
+            [clojure.tools.logging :as log]
+            [clojure.java.io :as io]
+            [nomad :as n]
             [org.httpkit.server :refer [run-server]]
-            #_[yoyo.core :as yc]
-            #_[yoyo :as y]
-            #_[yoyo.system :as ys]))
+            [yoyo.core :as yc]
+            [yoyo :as y]
+            [yoyo.system :as ys]))
 
 (defn make-api-handler
-  []
+  [config]
   (fn [req]
-    #_(info "Request to /api")
+    (log/info "Request to /api")
     {:status 200
      :headers {"Content-Type" "text/html"}
-     :body (str "Welcome to the API!")}))
+     :body (str "Welcome to the API! The password is: " (:password config))}))
 
 (defn make-not-found-handler
   []
-  (fn [req]
-    #_(info "Request to unknown route")
+  (fn [{:keys [uri]}]
+    (log/info "Request to non-existent route:" uri)
     {:status 404
      :headers {"Content-Type" "text/html"}
      :body "Not found."}))
@@ -31,58 +31,44 @@
   ["/" [["api" :api]
         [true :not-found]]])
 
-#_(defn make-Δ-config
-  []
-  (ys/->dep
-   (yc/->component
-    (nomad/read-config
-     (io/file "config.edn")))))
-
-#_(defn make-Δ-routes
-  []
-  (ys/->dep
-   (yc/->component
-     (make-routes))))
-
-#_(defn make-Δ-handler-fns
+(defn make-Δ-handler
   []
   (c/mlet [config (ys/ask :config)]
     (ys/->dep
       (yc/->component
-        {:api (make-api-handler config)
-         :not-found (make-not-found-handler)}))))
+        (make-handler
+          (make-routes)
+          {:api (make-api-handler config)
+           :not-found (make-not-found-handler)})))))
 
-#_(defn make-Δ-http-server
+(defn make-Δ-config
   []
-  (c/mlet [options (ys/ask :config :http-server-options)
-           routes (ys/ask :routes)
-           handler-fns (ys/ask :handler-fns)]
-    (ys/->dep
-      (let [stop-fn! (run-server (make-handler routes handler-fns) options)]
-        (info "Starting HTTP server on port" (:port options))
-        (yc/->component
-          options
-          (fn []
-            (info "Stopping HTTP server")
-            (stop-fn! :timeout (:timeout options))))))))
+  (ys/->dep
+   (yc/->component
+    (nomad/read-config
+     (io/resource "config.edn")))))
 
-#_(defn make-system
+(defn make-Δ-http-server
+  []
+  (c/mlet [http-server-port (ys/ask :config :http-server-port)
+           handler (ys/ask :handler)]
+    (ys/->dep
+      (let [stop-fn! (run-server handler {:port http-server-port :join? false})]
+        (log/info "Starting HTTP server on port" http-server-port)
+        (yc/->component
+          nil
+          (fn []
+            (log/info "Stopping HTTP server")
+            (stop-fn! :timeout 500)))))))
+
+(defn make-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
-                    (ys/named make-Δ-routes :routes)
-                    (ys/named make-Δ-handler-fns :handler-fns)
+                    (ys/named make-Δ-handler :handler)
                     (ys/named make-Δ-http-server :http-server)}))
-
-#_(defn -main
-  []
-  (y/set-system-fn! #'make-system)
-  (info "Starting system")
-  (y/start!))
 
 (defn -main
   []
-  (let [stop-server (run-server (make-handler
-                                 (make-routes)
-                                 {:api (make-api-handler)
-                                  :not-found (make-not-found-handler)})
-                                {:port 8080 :join? false})]))
+  (log/info "Starting system")
+  (y/set-system-fn! #'make-system)
+  (y/start!))
