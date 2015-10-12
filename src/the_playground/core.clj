@@ -1,19 +1,19 @@
 (ns the-playground.core
   (:gen-class)
-  (:require [yoyo :as y]
-            [nomad :as n]
-            [yoyo.core :as yc]
-            [yoyo.system :as ys]
-            [org.httpkit.server :refer [run-server]]
+  (:require #_[taoensso.timbre :refer [info]]
             [bidi.ring :refer [make-handler]]
-            [cats.core :as c]
-            [clojure.java.io :as io]
-            [taoensso.timbre :refer [info]]))
+            #_[cats.core :as c]
+            #_[clojure.java.io :as io]
+            #_[nomad :as n]
+            [org.httpkit.server :refer [run-server]]
+            #_[yoyo.core :as yc]
+            #_[yoyo :as y]
+            #_[yoyo.system :as ys]))
 
 (defn make-api-handler
-  [config]
+  []
   (fn [req]
-    (info "Request to /api")
+    #_(info "Request to /api")
     {:status 200
      :headers {"Content-Type" "text/html"}
      :body (str "Welcome to the API!")}))
@@ -21,7 +21,7 @@
 (defn make-not-found-handler
   []
   (fn [req]
-    (info "Request to unknown route")
+    #_(info "Request to unknown route")
     {:status 404
      :headers {"Content-Type" "text/html"}
      :body "Not found."}))
@@ -31,20 +31,20 @@
   ["/" [["api" :api]
         [true :not-found]]])
 
-(defn make-Δ-config
+#_(defn make-Δ-config
   []
   (ys/->dep
    (yc/->component
     (nomad/read-config
      (io/file "config.edn")))))
 
-(defn make-Δ-routes
+#_(defn make-Δ-routes
   []
   (ys/->dep
    (yc/->component
      (make-routes))))
 
-(defn make-Δ-handler-fns
+#_(defn make-Δ-handler-fns
   []
   (c/mlet [config (ys/ask :config)]
     (ys/->dep
@@ -52,7 +52,7 @@
         {:api (make-api-handler config)
          :not-found (make-not-found-handler)}))))
 
-(defn make-Δ-http-server
+#_(defn make-Δ-http-server
   []
   (c/mlet [options (ys/ask :config :http-server-options)
            routes (ys/ask :routes)
@@ -66,13 +66,23 @@
             (info "Stopping HTTP server")
             (stop-fn! :timeout (:timeout options))))))))
 
-(defn make-system []
+#_(defn make-system
+  []
   (ys/make-system #{(ys/named make-Δ-config :config)
                     (ys/named make-Δ-routes :routes)
                     (ys/named make-Δ-handler-fns :handler-fns)
                     (ys/named make-Δ-http-server :http-server)}))
 
-(defn -main []
+#_(defn -main
+  []
   (y/set-system-fn! #'make-system)
   (info "Starting system")
   (y/start!))
+
+(defn -main
+  []
+  (let [stop-server (run-server (make-handler
+                                 (make-routes)
+                                 {:api (make-api-handler)
+                                  :not-found (make-not-found-handler)})
+                                {:port 8080 :join? false})]))
