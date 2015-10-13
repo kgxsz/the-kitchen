@@ -13,7 +13,7 @@
                  [adzerk/boot-test "1.0.4" :scope "test"]])
 
 (require '[the-playground.core]
-         '[adzerk.boot-test :as bt])
+         '[adzerk.boot-test :refer [test]])
 
 (deftask build
   "Build the uberjar"
@@ -35,15 +35,10 @@
       (apply clojure.tools.namespace.repl/set-refresh-dirs dirs))
     fileset))
 
-(deftask test
-  "Runs tests"
-  []
-  (set-env! :source-paths #{"src" "test"})
-  (bt/test))
-
 (deftask develop
   []
   "Setup a development environmet"
+  (set-env! :source-paths #{"src" "test"})
   (comp
    (repl :server true :port 8088)
    (run)
