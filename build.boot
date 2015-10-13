@@ -24,22 +24,17 @@
    (uber)
    (jar :main 'the-playground.core)))
 
-(deftask run
-  []
-  "Kick off the main function"
-  (with-pre-wrap fileset
-    (with-bindings {#'*data-readers* *data-readers*}
-      (boot.core/load-data-readers!)
-      (the-playground.core/-main)
-      (def dirs (get-env :directories))
-      (apply clojure.tools.namespace.repl/set-refresh-dirs dirs))
-    fileset))
-
-(deftask develop
+(deftask dev
   []
   "Setup a development environmet"
   (set-env! :source-paths #{"src" "test"})
   (comp
    (repl :server true :port 8088)
-   (run)
+   (with-pre-wrap fileset
+     (with-bindings {#'*data-readers* *data-readers*}
+       (boot.core/load-data-readers!)
+       (the-playground.core/-main)
+       (def dirs (get-env :directories))
+       (apply clojure.tools.namespace.repl/set-refresh-dirs dirs))
+     fileset)
    (wait)))
