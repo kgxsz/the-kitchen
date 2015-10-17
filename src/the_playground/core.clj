@@ -1,35 +1,83 @@
 (ns the-playground.core
   (:gen-class)
-  (:require [bidi.ring :refer [make-handler]]
+  (:require [bidi.ring :refer [make-handler ->Resources]]
             [cats.core :as c]
             [clojure.tools.logging :as log]
+            [clojure.string :refer [replace-first]]
             [clojure.java.io :as io]
             [nomad :as n]
             [org.httpkit.server :refer [run-server]]
             [yoyo.core :as yc]
             [yoyo :as y]
-            [yoyo.system :as ys]))
+            [yoyo.system :as ys]
+            [schema.core :as s]
+            [ring.util.response :refer (url-response)]
+            [cheshire.core :refer :all]
+            [ring.swagger.swagger2 :as rs]))
 
 (defn make-api-handler
   [config]
-  (fn [req]
-    (log/info "Request to /api")
+  (fn [{:keys [uri]}]
+    (log/debug "Request to" uri)
     {:status 200
      :headers {"Content-Type" "text/html"}
      :body (str "Welcome to the API! The password is: " (:password config))}))
 
+(defn make-swagger-ui-handler
+  []
+  (fn [{:keys [uri]}]
+    (log/debug "Request to" uri)
+    (if (= uri "/swagger-ui")
+      (url-response (io/resource (str (replace-first uri #"/" "") "/index.html")))
+      (if-let [r (io/resource (replace-first uri #"/" ""))]
+        (url-response r)
+        {:status 404}))))
+
+(s/defschema User {:id s/Str
+                   :name s/Str
+                   :address {:street s/Str
+                             :city (s/enum :tre :hki)}})
+
+(defn make-swagger-docs-handler
+  []
+  (fn [{:keys [uri]}]
+    (log/debug "Request to" uri)
+    {:status 200
+     :headers {"Content-Type" "application/json"}
+     :body (generate-string
+            (s/with-fn-validation
+              (rs/swagger-json
+               {:info {:version "1.0.0"
+                       :title "The Playground"
+                       :description "A place to explore"}
+                :tags [{:name "user"
+                        :description "User stuff"}]
+                :paths {"/api" {:get {:summary "Api Root"
+                                      :description "The playground API root"
+                                      :tags []
+                                      :responses {200 {:schema User
+                                                       :description "Found it!"}
+                                                  404 {:description "Ohnoes."}}}}}})))}))
+
 (defn make-not-found-handler
   []
   (fn [{:keys [uri]}]
-    (log/info "Request to non-existent route:" uri)
-    {:status 404
-     :headers {"Content-Type" "text/html"}
-     :body "Not found."}))
+    (log/debug "Request to non-existent route:" uri)
+    {:status 404}))
 
 (defn make-routes
   []
-  ["/" [["api" :api]
-        [true :not-found]]])
+  ["/" {"api" :api
+        "swagger-ui" {true :swagger-ui}
+        "swagger-docs" :swagger-docs
+        true :not-found}])
+
+(defn make-handler-fns
+  [config]
+  {:api (make-api-handler config)
+   :swagger-ui (make-swagger-ui-handler)
+   :swagger-docs (make-swagger-docs-handler)
+   :not-found (make-not-found-handler)})
 
 (defn make-Δ-handler
   []
@@ -38,8 +86,7 @@
       (yc/->component
         (make-handler
           (make-routes)
-          {:api (make-api-handler config)
-           :not-found (make-not-found-handler)})))))
+          (make-handler-fns config))))))
 
 (defn make-Δ-config
   []

@@ -15,6 +15,11 @@
                                org.clojure/tools.nrepl]]
                  [http-kit "2.1.19"]
                  [bidi "1.20.3"]
+                 [metosin/ring-swagger "0.21.0"]
+                 [prismatic/schema "1.0.1"]
+                 [metosin/ring-swagger-ui "2.1.3"]
+                 [ring/ring-core "1.4.0"]
+                 [cheshire "5.5.0"]
                  [adzerk/boot-test "1.0.4" :scope "test"]])
 
 (require '[the-playground.core]
@@ -35,7 +40,6 @@
   (set-env! :source-paths #{"src" "test"})
   (comp
    (repl :server true :port 8088)
-
    (with-pre-wrap fileset
      (with-bindings {#'*data-readers* *data-readers*}
        (boot.core/load-data-readers!)
@@ -43,5 +47,4 @@
        (def dirs (get-env :directories))
        (apply clojure.tools.namespace.repl/set-refresh-dirs dirs))
      fileset)
-
    (wait)))
