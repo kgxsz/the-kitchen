@@ -1,6 +1,6 @@
 (ns the-playground.core
   (:gen-class)
-  (:require [bidi.ring :refer [make-handler ->Resources]]
+  (:require [bidi.ring :refer [make-handler]]
             [cats.core :as c]
             [clojure.tools.logging :as log]
             [clojure.string :refer [replace-first]]
@@ -27,11 +27,11 @@
   []
   (fn [{:keys [uri]}]
     (log/debug "Request to" uri)
-    (if (= uri "/swagger-ui")
-      (url-response (io/resource (str (replace-first uri #"/" "") "/index.html")))
-      (if-let [r (io/resource (replace-first uri #"/" ""))]
-        (url-response r)
-        {:status 404}))))
+    (if-let [resource (->> (if (= uri "/swagger-ui") "/index.html" "")
+                           (str (replace-first uri #"/" ""))
+                           (io/resource))]
+      (url-response resource)
+      {:status 404})))
 
 (s/defschema User {:id s/Str
                    :name s/Str
@@ -62,8 +62,8 @@
 (defn make-not-found-handler
   []
   (fn [{:keys [uri]}]
-    (log/debug "Request to non-existent route:" uri)
-    {:status 404}))
+    (log/debug "Request to" uri
+               {:status 404})))
 
 (defn make-routes
   []
