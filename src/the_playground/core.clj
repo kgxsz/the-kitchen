@@ -71,28 +71,24 @@
     (log/debug "Request to" uri
                {:status 404})))
 
-(defn make-routes
-  []
-  ["/" {"api" :api
-        "swagger-ui" {true :swagger-ui}
-        "swagger-docs" :swagger-docs
-        true :not-found}])
-
-(defn make-handler-fns
-  [config]
-  {:api (make-api-handler config)
-   :swagger-ui (make-swagger-ui-handler)
-   :swagger-docs (make-swagger-docs-handler)
-   :not-found (make-not-found-handler)})
-
-(defn make-Δ-handler
+(defn make-Δ-handlers
   []
   (c/mlet [config (ys/ask :config)]
     (ys/->dep
-      (yc/->component
-        (make-handler
-          (make-routes)
-          (make-handler-fns config))))))
+     (yc/->component
+      {:api (make-api-handler config)
+       :swagger-ui (make-swagger-ui-handler)
+       :swagger-docs (make-swagger-docs-handler)
+       :not-found (make-not-found-handler)}))))
+
+(defn make-Δ-routes
+  []
+  (ys/->dep
+   (yc/->component
+    ["/" {"api" :api
+          "swagger-ui" {true :swagger-ui}
+          "swagger-docs" :swagger-docs
+          true :not-found}])))
 
 (defn make-Δ-config
   []
@@ -104,9 +100,11 @@
 (defn make-Δ-http-server
   []
   (c/mlet [http-server-port (ys/ask :config :http-server-port)
-           handler (ys/ask :handler)]
+           routes (ys/ask :routes)
+           handlers (ys/ask :handlers)]
     (ys/->dep
-      (let [stop-fn! (run-server handler {:port http-server-port :join? false})]
+     (let [stop-fn! (run-server (make-handler routes handlers)
+                                {:port http-server-port :join? false})]
         (log/info "Starting HTTP server on port" http-server-port)
         (yc/->component
           nil
@@ -117,7 +115,8 @@
 (defn make-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
-                    (ys/named make-Δ-handler :handler)
+                    (ys/named make-Δ-routes :routes)
+                    (ys/named make-Δ-handlers :handlers)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (defn -main
