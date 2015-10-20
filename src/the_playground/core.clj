@@ -1,6 +1,7 @@
 (ns the-playground.core
   (:gen-class)
   (:require [bidi.ring :refer [make-handler]]
+            [bidi.bidi :as b]
             [cats.core :as c]
             [clojure.tools.logging :as log]
             [clojure.string :refer [replace-first]]
@@ -23,6 +24,10 @@
 (defn with-docs
   [handler docs]
   (vary-meta handler assoc :docs docs))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn make-api-handler
   [config]
@@ -63,13 +68,17 @@
                        :description "A place to explore"}
                 :tags [{:name "user"
                         :description "User stuff"}]
-                :paths {"/api" {:get {}}}})))}))
+                :paths {(b/path-for routes :api) {:get (:docs (meta (:api api-handlers)))}}})))}))
 
 (defn make-not-found-handler
   []
   (fn [{:keys [uri]}]
-    (log/debug "Request to" uri
-               {:status 404})))
+    (log/debug "Request to" uri)
+    {:status 404}))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn make-Δ-routes
   []
