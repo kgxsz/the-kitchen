@@ -1,1 +1,1 @@
-window.API_CONF = {url: "/swagger-docs"};
+window.API_CONF = {url: "/api-docs"};

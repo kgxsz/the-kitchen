@@ -49,8 +49,8 @@
       (url-response resource)
       {:status 404})))
 
-(defn make-swagger-docs-handler
-  []
+(defn make-api-docs-handler
+  [api-handlers routes]
   (fn [{:keys [uri]}]
     (log/debug "Request to" uri)
     {:status 200
@@ -71,24 +71,31 @@
     (log/debug "Request to" uri
                {:status 404})))
 
-(defn make-Δ-handlers
-  []
-  (c/mlet [config (ys/ask :config)]
-    (ys/->dep
-     (yc/->component
-      {:api (make-api-handler config)
-       :swagger-ui (make-swagger-ui-handler)
-       :swagger-docs (make-swagger-docs-handler)
-       :not-found (make-not-found-handler)}))))
-
 (defn make-Δ-routes
   []
   (ys/->dep
    (yc/->component
     ["/" {"api" :api
           "swagger-ui" {true :swagger-ui}
-          "swagger-docs" :swagger-docs
+          "api-docs" :api-docs
           true :not-found}])))
+
+(defn make-Δ-api-handlers
+  []
+  (c/mlet [config (ys/ask :config)]
+    (ys/->dep
+     (yc/->component
+      {:api (make-api-handler config)}))))
+
+(defn make-Δ-aux-handlers
+  []
+  (c/mlet [routes (ys/ask :routes)
+           api-handlers (ys/ask :api-handlers)]
+    (ys/->dep
+     (yc/->component
+      {:swagger-ui (make-swagger-ui-handler)
+       :api-docs (make-api-docs-handler api-handlers routes)
+       :not-found (make-not-found-handler)}))))
 
 (defn make-Δ-config
   []
@@ -101,9 +108,11 @@
   []
   (c/mlet [http-server-port (ys/ask :config :http-server-port)
            routes (ys/ask :routes)
-           handlers (ys/ask :handlers)]
+           api-handlers (ys/ask :api-handlers)
+           aux-handlers (ys/ask :aux-handlers)]
     (ys/->dep
-     (let [stop-fn! (run-server (make-handler routes handlers)
+     (let [handlers (merge api-handlers aux-handlers)
+           stop-fn! (run-server (make-handler routes handlers)
                                 {:port http-server-port :join? false})]
         (log/info "Starting HTTP server on port" http-server-port)
         (yc/->component
@@ -116,7 +125,8 @@
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
                     (ys/named make-Δ-routes :routes)
-                    (ys/named make-Δ-handlers :handlers)
+                    (ys/named make-Δ-api-handlers :api-handlers)
+                    (ys/named make-Δ-aux-handlers :aux-handlers)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (defn -main
