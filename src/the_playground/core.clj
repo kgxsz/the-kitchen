@@ -97,6 +97,15 @@
        :api-docs (make-api-docs-handler api-handlers routes)
        :not-found (make-not-found-handler)}))))
 
+(defn make-Δ-handler
+  []
+  (c/mlet [routes (ys/ask :routes)
+           api-handlers (ys/ask :api-handlers)
+           aux-handlers (ys/ask :aux-handlers)]
+    (ys/->dep
+     (yc/->component
+      (merge api-handlers aux-handlers)))))
+
 (defn make-Δ-config
   []
   (ys/->dep
@@ -108,11 +117,9 @@
   []
   (c/mlet [http-server-port (ys/ask :config :http-server-port)
            routes (ys/ask :routes)
-           api-handlers (ys/ask :api-handlers)
-           aux-handlers (ys/ask :aux-handlers)]
+           handler (ys/ask :handler)]
     (ys/->dep
-     (let [handlers (merge api-handlers aux-handlers)
-           stop-fn! (run-server (make-handler routes handlers)
+     (let [stop-fn! (run-server (make-handler routes handler)
                                 {:port http-server-port :join? false})]
         (log/info "Starting HTTP server on port" http-server-port)
         (yc/->component
@@ -127,6 +134,7 @@
                     (ys/named make-Δ-routes :routes)
                     (ys/named make-Δ-api-handlers :api-handlers)
                     (ys/named make-Δ-aux-handlers :aux-handlers)
+                    (ys/named make-Δ-handler :handler)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (defn -main
