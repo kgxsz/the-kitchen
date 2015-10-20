@@ -15,13 +15,29 @@
             [cheshire.core :refer :all]
             [ring.swagger.swagger2 :as rs]))
 
+(s/defschema User {:id s/Str
+                   :name s/Str
+                   :address {:street s/Str
+                             :city (s/enum :tre :hki)}})
+
+(defn with-docs
+  [handler docs]
+  (vary-meta handler assoc :docs docs))
+
 (defn make-api-handler
   [config]
-  (fn [{:keys [uri]}]
-    (log/debug "Request to" uri)
-    {:status 200
-     :headers {"Content-Type" "text/html"}
-     :body (str "Welcome to the API! The password is: " (:password config))}))
+  (-> (fn [{:keys [uri]}]
+        (log/debug "Request to" uri)
+        {:status 200
+         :headers {"Content-Type" "text/html"}
+         :body (str "Welcome to the API! The password is: " (:password config))})
+
+      (with-docs {:summary "API root"
+                  :description "The playground API root"
+                  :tags ["hello world"]
+                  :responses {200 {:schema User
+                                   :description "The user you're looking for"}
+                              404 {:description "Not found brah!"}}})))
 
 (defn make-swagger-ui-handler
   []
@@ -32,11 +48,6 @@
                            (io/resource))]
       (url-response resource)
       {:status 404})))
-
-(s/defschema User {:id s/Str
-                   :name s/Str
-                   :address {:street s/Str
-                             :city (s/enum :tre :hki)}})
 
 (defn make-swagger-docs-handler
   []
@@ -52,12 +63,7 @@
                        :description "A place to explore"}
                 :tags [{:name "user"
                         :description "User stuff"}]
-                :paths {"/api" {:get {:summary "Api Root"
-                                      :description "The playground API root"
-                                      :tags []
-                                      :responses {200 {:schema User
-                                                       :description "Found it!"}
-                                                  404 {:description "Ohnoes."}}}}}})))}))
+                :paths {"/api" {:get {}}}})))}))
 
 (defn make-not-found-handler
   []
