@@ -54,7 +54,7 @@
 
       (with-docs {:summary "Gets a list of users"
                   :description "Lists all the users"
-                  :tags ["users"]
+                  :tags ["Users"]
                   :responses {200 {:schema UsersResponse
                                    :description "The list of users"}}})))
 
