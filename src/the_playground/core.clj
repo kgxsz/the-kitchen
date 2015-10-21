@@ -16,10 +16,22 @@
             [cheshire.core :refer :all]
             [ring.swagger.swagger2 :as rs]))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (s/defschema User {:id s/Str
                    :name s/Str
                    :address {:street s/Str
                              :city (s/enum :tre :hki)}})
+
+(s/defschema Article {:id s/Str
+                      :title s/Str
+                      :text s/Str})
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn with-docs
   [handler docs]
@@ -29,20 +41,33 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn make-api-handler
-  [config]
+(defn make-users-handler
+  []
   (-> (fn [{:keys [uri]}]
         (log/debug "Request to" uri)
         {:status 200
          :headers {"Content-Type" "text/html"}
-         :body (str "Welcome to the API! The password is: " (:password config))})
+         :body (str "A list of users")})
 
-      (with-docs {:summary "API root"
-                  :description "The playground API root"
-                  :tags ["hello world"]
-                  :responses {200 {:schema User
-                                   :description "The user you're looking for"}
-                              404 {:description "Not found brah!"}}})))
+      (with-docs {:summary "Users"
+                  :description "Lists all the users"
+                  :tags ["users"]
+                  :responses {200 {:schema [User]
+                                   :description "The list of users"}}})))
+
+(defn make-articles-handler
+  []
+  (-> (fn [{:keys [uri]}]
+        (log/debug "Request to" uri)
+        {:status 200
+         :headers {"Content-Type" "text/html"}
+         :body (str "A list of articles")})
+
+      (with-docs {:summary "Articles"
+                  :description "Lists all the articles"
+                  :tags ["articles"]
+                  :responses {200 {:schema [Article]
+                                   :description "The list of articles"}}})))
 
 (defn make-swagger-ui-handler
   []
@@ -58,6 +83,8 @@
   [api-handlers routes]
   (fn [{:keys [uri]}]
     (log/debug "Request to" uri)
+    (log/debug (b/match-route routes "/api/users" :request-method :get))
+    (log/debug (b/path-for routes :users))
     {:status 200
      :headers {"Content-Type" "application/json"}
      :body (generate-string
@@ -68,7 +95,7 @@
                        :description "A place to explore"}
                 :tags [{:name "user"
                         :description "User stuff"}]
-                :paths {(b/path-for routes :api) {:get (:docs (meta (:api api-handlers)))}}})))}))
+                :paths {(b/path-for routes :users) {:get (:docs (meta (:users api-handlers)))}}})))}))
 
 (defn make-not-found-handler
   []
@@ -84,17 +111,18 @@
   []
   (ys/->dep
    (yc/->component
-    ["/" {"api" :api
-          "swagger-ui" {true :swagger-ui}
-          "api-docs" :api-docs
+    ["/" {"api" {"/users" {:get :users}
+                 "/articles" {:get :articles}}
+          "swagger-ui" {:get {true :swagger-ui}}
+          "api-docs" {:get :api-docs}
           true :not-found}])))
 
 (defn make-Δ-api-handlers
   []
-  (c/mlet [config (ys/ask :config)]
-    (ys/->dep
-     (yc/->component
-      {:api (make-api-handler config)}))))
+  (ys/->dep
+   (yc/->component
+    {:users (make-users-handler)
+     :articles (make-articles-handler)})))
 
 (defn make-Δ-aux-handlers
   []
