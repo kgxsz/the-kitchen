@@ -29,6 +29,9 @@
                       :title s/Str
                       :text s/Str})
 
+(s/defschema UsersResponse [User])
+
+(s/defschema ArticlesResponse [Article])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -46,13 +49,13 @@
   (-> (fn [{:keys [uri]}]
         (log/debug "Request to" uri)
         {:status 200
-         :headers {"Content-Type" "text/html"}
+         :headers {"Content-Type" "application/json"}
          :body (str "A list of users")})
 
-      (with-docs {:summary "Users"
+      (with-docs {:summary "Gets a list of users"
                   :description "Lists all the users"
                   :tags ["users"]
-                  :responses {200 {:schema [User]
+                  :responses {200 {:schema UsersResponse
                                    :description "The list of users"}}})))
 
 (defn make-articles-handler
@@ -60,13 +63,13 @@
   (-> (fn [{:keys [uri]}]
         (log/debug "Request to" uri)
         {:status 200
-         :headers {"Content-Type" "text/html"}
+         :headers {"Content-Type" "application/json"}
          :body (str "A list of articles")})
 
-      (with-docs {:summary "Articles"
+      (with-docs {:summary "Gets a list of articles"
                   :description "Lists all the articles"
-                  :tags ["articles"]
-                  :responses {200 {:schema [Article]
+                  :tags ["Articles"]
+                  :responses {200 {:schema ArticlesResponse
                                    :description "The list of articles"}}})))
 
 (defn make-swagger-ui-handler
@@ -93,9 +96,10 @@
                {:info {:version "1.0.0"
                        :title "The Playground"
                        :description "A place to explore"}
-                :tags [{:name "user"
+                :tags [{:name "User"
                         :description "User stuff"}]
-                :paths {(b/path-for routes :users) {:get (:docs (meta (:users api-handlers)))}}})))}))
+                :paths {(b/path-for routes :users) {:get (:docs (meta (:users api-handlers)))}
+                        (b/path-for routes :articles) {:get (:docs (meta (:articles api-handlers)))}}})))}))
 
 (defn make-not-found-handler
   []
