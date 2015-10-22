@@ -31,6 +31,8 @@
 
 (s/defschema UsersResponse [User])
 
+(s/defschema CreateUserResponse User)
+
 (s/defschema ArticlesResponse [Article])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,6 +59,20 @@
                   :tags ["Users"]
                   :responses {200 {:schema UsersResponse
                                    :description "The list of users"}}})))
+
+(defn make-create-user-handler
+  []
+  (-> (fn [{:keys [uri]}]
+        (log/debug "Request to" uri)
+        {:status 200
+         :headers {"Content-Type" "application/json"}
+         :body (str "Create a user")})
+
+      (with-docs {:summary "Creates a user"
+                  :description "Creates a user"
+                  :tags ["Users"]
+                  :responses {201 {:schema CreateUserResponse
+                                   :description "The created user"}}})))
 
 (defn make-articles-handler
   []
@@ -86,8 +102,6 @@
   [api-handlers routes]
   (fn [{:keys [uri]}]
     (log/debug "Request to" uri)
-    (log/debug (b/match-route routes "/api/users" :request-method :get))
-    (log/debug (b/path-for routes :users))
     {:status 200
      :headers {"Content-Type" "application/json"}
      :body (generate-string
@@ -98,8 +112,14 @@
                        :description "A place to explore"}
                 :tags [{:name "User"
                         :description "User stuff"}]
-                :paths {(b/path-for routes :users) {:get (:docs (meta (:users api-handlers)))}
-                        (b/path-for routes :articles) {:get (:docs (meta (:articles api-handlers)))}}})))}))
+                :paths (apply
+                         merge-with
+                         merge
+                         (for [[handler-key _] api-handlers
+                               request-method [:get :post :put :delete :head :options]
+                               :let [path (b/path-for routes handler-key)]
+                               :when (= handler-key (:handler (b/match-route routes path :request-method request-method)))]
+                           {path {request-method (:docs (meta (handler-key api-handlers)))}}))})))}))
 
 (defn make-not-found-handler
   []
@@ -115,7 +135,8 @@
   []
   (ys/->dep
    (yc/->component
-    ["/" {"api" {"/users" {:get :users}
+    ["/" {"api" {"/users" {:get :users
+                           :post :create-user}
                  "/articles" {:get :articles}}
           "swagger-ui" {:get {true :swagger-ui}}
           "api-docs" {:get :api-docs}
@@ -126,6 +147,7 @@
   (ys/->dep
    (yc/->component
     {:users (make-users-handler)
+     :create-user (make-create-user-handler)
      :articles (make-articles-handler)})))
 
 (defn make-Δ-aux-handlers
