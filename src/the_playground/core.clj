@@ -98,10 +98,6 @@
       (url-response resource)
       {:status 404})))
 
-(defn generate-api-docs
-  [api-handlers routes]
-  )
-
 (defn make-api-docs-handler
   [api-docs]
   (fn [{:keys [uri]}]
@@ -205,11 +201,11 @@
 (defn make-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
+                    (ys/named make-Δ-api-docs :api-docs)
                     (ys/named make-Δ-routes :routes)
                     (ys/named make-Δ-api-handlers :api-handlers)
                     (ys/named make-Δ-aux-handlers :aux-handlers)
                     (ys/named make-Δ-handler :handler)
-                    (ys/named make-Δ-api-docs :api-docs)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (defn -main
