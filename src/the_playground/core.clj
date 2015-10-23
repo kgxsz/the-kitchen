@@ -98,15 +98,31 @@
       (url-response resource)
       {:status 404})))
 
+(defn generate-api-docs
+  [api-handlers routes]
+  (s/with-fn-validation
+    (rs/swagger-json
+     {:info {:version "1.0.0"
+             :title "The Playground"
+             :description "A place to explore"}
+      :tags [{:name "User"
+              :description "User stuff"}]
+      :paths (apply
+              merge-with
+              merge
+              (for [[handler-key _] api-handlers
+                    request-method [:get :post :put :delete :head :options]
+                    :let [path (b/path-for routes handler-key)]
+                    :when (= handler-key (:handler (b/match-route routes path :request-method request-method)))]
+                {path {request-method (:docs (meta (handler-key api-handlers)))}}))})))
+
 (defn make-api-docs-handler
-  [api-docs]
+  [api-handlers routes]
   (fn [{:keys [uri]}]
     (log/debug "Request to" uri)
     {:status 200
      :headers {"Content-Type" "application/json"}
-     :body (-> api-docs
-               rs/swagger-json
-               s/with-fn-validation
+     :body (-> (generate-api-docs api-handlers routes)
                generate-string)}))
 
 (defn make-not-found-handler
@@ -140,11 +156,12 @@
 
 (defn make-Δ-aux-handlers
   []
-  (c/mlet [api-docs (ys/ask :api-docs)]
+  (c/mlet [api-handlers (ys/ask :api-handlers)
+           routes (ys/ask :routes)]
     (ys/->dep
      (yc/->component
       {:swagger-ui (make-swagger-ui-handler)
-       :api-docs (make-api-docs-handler api-docs)
+       :api-docs (make-api-docs-handler api-handlers routes)
        :not-found (make-not-found-handler)}))))
 
 (defn make-Δ-handler
@@ -162,26 +179,6 @@
    (yc/->component
     (nomad/read-config
      (io/resource "config.edn")))))
-
-(defn make-Δ-api-docs
-  []
-  (c/mlet [routes (ys/ask :routes)
-           api-handlers (ys/ask :api-handlers)]
-    (ys/->dep
-     (yc/->component
-      {:info {:version "1.0.0"
-              :title "The Playground"
-              :description "A place to explore"}
-       :tags [{:name "User"
-               :description "User stuff"}]
-       :paths (apply
-               merge-with
-               merge
-               (for [[handler-key _] api-handlers
-                     request-method [:get :post :put :delete :head :options]
-                     :let [path (b/path-for routes handler-key)]
-                     :when (= handler-key (:handler (b/match-route routes path :request-method request-method)))]
-                 {path {request-method (:docs (meta (handler-key api-handlers)))}}))}))))
 
 (defn make-Δ-http-server
   []
@@ -201,7 +198,6 @@
 (defn make-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
-                    (ys/named make-Δ-api-docs :api-docs)
                     (ys/named make-Δ-routes :routes)
                     (ys/named make-Δ-api-handlers :api-handlers)
                     (ys/named make-Δ-aux-handlers :aux-handlers)
