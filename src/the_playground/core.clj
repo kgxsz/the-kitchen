@@ -133,30 +133,25 @@
       (url-response resource)
       {:status 404})))
 
-(defn generate-api-docs
-  [api-handler-mapping route-mapping]
-  (s/with-fn-validation
-    (rs/swagger-json
-     {:info {:version "1.0.0"
-             :title "The Playground"
-             :description "A place to explore"}
-      :tags [{:name "User"
-              :description "User stuff"}]
-      :paths (apply
-              merge-with
-              merge
-              (for [[handler-key _] api-handler-mapping
-                    request-method [:get :post :put :delete :head :options]
-                    :let [path (b/path-for route-mapping handler-key)]
-                    :when (= handler-key (:handler (b/match-route route-mapping path :request-method request-method)))]
-                {path {request-method (:docs (meta (handler-key api-handler-mapping)))}}))})))
-
 (defn make-api-docs-handler
   [api-handler-mapping route-mapping]
   (fn [req]
     {:status 200
-     :headers {"Content-Type" "application/json"}
-     :body (generate-string (generate-api-docs api-handler-mapping route-mapping))}))
+     :body (s/with-fn-validation
+             (rs/swagger-json
+               {:info {:version "1.0.0"
+                       :title "The Playground"
+                       :description "A place to explore"}
+                :tags [{:name "User"
+                        :description "User stuff"}]
+                :paths (apply
+                        merge-with
+                        merge
+                        (for [[handler-key _] api-handler-mapping
+                              request-method [:get :post :put :delete :head :options]
+                              :let [path (b/path-for route-mapping handler-key)]
+                              :when (= handler-key (:handler (b/match-route route-mapping path :request-method request-method)))]
+                          {path {request-method (:docs (meta (handler-key api-handler-mapping)))}}))}))}))
 
 (defn make-not-found-handler
   []
@@ -192,7 +187,7 @@
     (ys/->dep
      (yc/->component
       {:swagger-ui (make-swagger-ui-handler)
-       :api-docs (make-api-docs-handler api-handler-mapping route-mapping)
+       :api-docs (wrap-json-response (make-api-docs-handler api-handler-mapping route-mapping))
        :not-found (make-not-found-handler)}))))
 
 (defn make-Δ-handler
