@@ -65,8 +65,10 @@
 (defn wrap-logging
   [handler]
   (fn [{:keys [uri] :as req}]
-    (log/debug "Request to" uri)
-    (handler req)))
+    (log/debug "Processing request to" uri)
+    (let [{:keys [status] :as res} (handler req)]
+      (log/debug "Dispatching response with status" status "for request to" uri)
+      res)))
 
 (defn wrap-exception-catching
   [handler]
