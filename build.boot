@@ -20,6 +20,7 @@
                  [metosin/ring-swagger-ui "2.1.3"]
                  [ring/ring-core "1.4.0"]
                  [cheshire "5.5.0"]
+                 [slingshot "0.12.2"]
                  [adzerk/boot-test "1.0.4" :scope "test"]])
 
 (require '[the-playground.core]

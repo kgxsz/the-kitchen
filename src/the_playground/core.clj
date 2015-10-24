@@ -14,6 +14,7 @@
             [schema.core :as s]
             [ring.util.response :refer (url-response)]
             [cheshire.core :refer :all]
+            [slingshot.slingshot :refer [try+]]
             [ring.swagger.swagger2 :as rs]))
 
 
@@ -67,6 +68,15 @@
     (log/debug "Request to" uri)
     (handler req)))
 
+(defn wrap-exception-catching
+  [handler]
+  (fn [req]
+    (try+
+     (handler req)
+     (catch Object e
+       (log/error  "Unhandled exception" e)
+       {:status 500}))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -103,7 +113,7 @@
   (-> (fn [req]
         {:status 200
          :body (s/validate ArticlesResponse
-                 {:articles [{:id 435 :title "Things I like", :text "I like cheese and bread."}
+                 {:articles [{:id 176, :title "Things I like", :text "I like cheese and bread."}
                              {:id 346, :title "Superconductivity", :text "It's really hard to understand."}]})})
 
       (wrap-docs {:summary "Gets a list of articles"
@@ -193,7 +203,8 @@
       (let [wrapped-api-handler-mapping (wrap-each-handler api-handler-mapping [wrap-json-response])]
         (-> (make-handler route-mapping (merge wrapped-api-handler-mapping
                                                aux-handler-mapping))
-            (wrap-logging)))))))
+            (wrap-logging)
+            (wrap-exception-catching)))))))
 
 (defn make-Δ-config
   []
