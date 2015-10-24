@@ -74,7 +74,7 @@
     (try+
      (handler req)
      (catch Object e
-       (log/error  "Unhandled exception" e)
+       (log/error  "Unhandled exception:" e)
        {:status 500}))))
 
 
@@ -98,7 +98,7 @@
 (defn make-create-user-handler
   []
   (-> (fn [req]
-        {:status 200
+        {:status 201
          :body (s/validate CreateUserResponse
                  {:user {:id 456 :name "Alice"}})})
 
