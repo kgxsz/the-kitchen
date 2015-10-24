@@ -1,21 +1,21 @@
 (ns the-playground.core
   (:gen-class)
-  (:require [bidi.ring :refer [make-handler]]
-            [bidi.bidi :as b]
+  (:require [bidi.bidi :as b]
+            [bidi.ring :refer [make-handler]]
             [cats.core :as c]
-            [clojure.tools.logging :as log]
-            [clojure.string :refer [replace-first]]
+            [cheshire.core :refer :all]
             [clojure.java.io :as io]
+            [clojure.string :refer [replace-first]]
+            [clojure.tools.logging :as log]
             [nomad :as n]
             [org.httpkit.server :refer [run-server]]
-            [yoyo.core :as yc]
-            [yoyo :as y]
-            [yoyo.system :as ys]
-            [schema.core :as s]
+            [ring.swagger.swagger2 :as rs]
             [ring.util.response :refer (url-response)]
-            [cheshire.core :refer :all]
+            [schema.core :as s]
             [slingshot.slingshot :refer [try+]]
-            [ring.swagger.swagger2 :as rs]))
+            [yoyo :as y]
+            [yoyo.core :as yc]
+            [yoyo.system :as ys]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
