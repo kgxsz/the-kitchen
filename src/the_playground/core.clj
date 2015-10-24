@@ -53,9 +53,10 @@
 
 (defn wrap-return-json
   [handler]
-  (fn [{:keys [uri] :as req}]
-    (log/debug "Return JSON!!")
-    (handler req)))
+  (fn [req]
+    (-> (handler req)
+        (update :body generate-string)
+        (update :headers assoc "Content-Type" "application/json"))))
 
 (defn wrap-do-something
   [handler]
@@ -64,7 +65,7 @@
     (handler req)))
 
 (defn wrap-docs
-  [handler docs]
+  [handler docsk
   (vary-meta handler assoc :docs docs))
 
 (defn wrap-logging
@@ -80,11 +81,9 @@
   []
   (-> (fn [req]
         {:status 200
-         :headers {"Content-Type" "application/json"}
          :body (->> {:users [{:id 123, :name "Bob"}
                              {:id 321, :name "Jane"}]}
-                    (s/validate UsersResponse)
-                    generate-string)})
+                    (s/validate UsersResponse))})
 
       (wrap-docs {:summary "Gets a list of users"
                   :description "Lists all the users"
@@ -96,10 +95,8 @@
   []
   (-> (fn [req]
         {:status 200
-         :headers {"Content-Type" "application/json"}
          :body (->> {:user {:id 456 :name "Alice"}}
-                    (s/validate CreateUserResponse)
-                    generate-string)})
+                    (s/validate CreateUserResponse))})
 
       (wrap-docs {:summary "Creates a user"
                   :description "Creates a user"
@@ -111,11 +108,9 @@
   []
   (-> (fn [req]
         {:status 200
-         :headers {"Content-Type" "application/json"}
          :body (->> {:articles [{:id 876, :title "Things I like", :text "I like cheese and bread."}
                                 {:id 346, :title "Superconductivity", :text "It's really hard to understand."}]}
-                    (s/validate ArticlesResponse)
-                    generate-string)})
+                    (s/validate ArticlesResponse))})
 
       (wrap-docs {:summary "Gets a list of articles"
                   :description "Lists all the articles"
