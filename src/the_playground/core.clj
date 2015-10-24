@@ -39,10 +39,9 @@
 
 (defn wrap-each-handler
   [handler-mapping middleware]
-  "Wraps the supplied middleware around each handler
-   defined within the the handler mapping. This is
-   useful for wrapping many handlers at once, without
-   affecting every handler in the application."
+  "Wraps each of the supplied middleware around each handler defined within the
+   the handler mapping. This is useful for wrapping many handlers at once,
+   without affecting every handler in the application."
   (into {}
     (for [[handler-key handler] handler-mapping]
       [handler-key ((apply comp middleware) handler)])))
@@ -51,21 +50,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn wrap-return-json
+(defn wrap-json-response
   [handler]
   (fn [req]
     (-> (handler req)
         (update :body generate-string)
         (update :headers assoc "Content-Type" "application/json"))))
 
-(defn wrap-do-something
-  [handler]
-  (fn [{:keys [uri] :as req}]
-    (log/debug "DO SOMETHING!!")
-    (handler req)))
-
 (defn wrap-docs
-  [handler docsk
+  [handler docs]
   (vary-meta handler assoc :docs docs))
 
 (defn wrap-logging
@@ -74,6 +67,7 @@
     (log/debug "Request to" uri)
     (handler req)))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -81,9 +75,9 @@
   []
   (-> (fn [req]
         {:status 200
-         :body (->> {:users [{:id 123, :name "Bob"}
-                             {:id 321, :name "Jane"}]}
-                    (s/validate UsersResponse))})
+         :body (s/validate UsersResponse
+                 {:users [{:id 123, :name "Bob"}
+                          {:id 321, :name "Jane"}]})})
 
       (wrap-docs {:summary "Gets a list of users"
                   :description "Lists all the users"
@@ -95,8 +89,8 @@
   []
   (-> (fn [req]
         {:status 200
-         :body (->> {:user {:id 456 :name "Alice"}}
-                    (s/validate CreateUserResponse))})
+         :body (s/validate CreateUserResponse
+                 {:user {:id 456 :name "Alice"}})})
 
       (wrap-docs {:summary "Creates a user"
                   :description "Creates a user"
@@ -108,9 +102,9 @@
   []
   (-> (fn [req]
         {:status 200
-         :body (->> {:articles [{:id 876, :title "Things I like", :text "I like cheese and bread."}
-                                {:id 346, :title "Superconductivity", :text "It's really hard to understand."}]}
-                    (s/validate ArticlesResponse))})
+         :body (s/validate ArticlesResponse
+                 {:articles [{:id 435 :title "Things I like", :text "I like cheese and bread."}
+                             {:id 346, :title "Superconductivity", :text "It's really hard to understand."}]})})
 
       (wrap-docs {:summary "Gets a list of articles"
                   :description "Lists all the articles"
@@ -196,8 +190,7 @@
            aux-handler-mapping (ys/ask :aux-handler-mapping)]
     (ys/->dep
      (yc/->component
-      (let [wrapped-api-handler-mapping (wrap-each-handler api-handler-mapping [wrap-do-something
-                                                                                wrap-return-json])]
+      (let [wrapped-api-handler-mapping (wrap-each-handler api-handler-mapping [wrap-json-response])]
         (-> (make-handler route-mapping (merge wrapped-api-handler-mapping
                                                aux-handler-mapping))
             (wrap-logging)))))))
