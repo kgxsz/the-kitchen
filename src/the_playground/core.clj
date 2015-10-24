@@ -33,8 +33,35 @@
 
 (s/defschema ArticlesResponse {:articles [Article]})
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defn wrap-each-handler
+  [handler-mapping middleware]
+  "Wraps the supplied middleware around each handler
+   defined within the the handler mapping. This is
+   useful for wrapping many handlers at once, without
+   affecting every handler in the application."
+  (into {}
+    (for [[handler-key handler] handler-mapping]
+      [handler-key ((apply comp middleware) handler)])))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn wrap-return-json
+  [handler]
+  (fn [{:keys [uri] :as req}]
+    (log/debug "Return JSON!!")
+    (handler req)))
+
+(defn wrap-do-something
+  [handler]
+  (fn [{:keys [uri] :as req}]
+    (log/debug "DO SOMETHING!!")
+    (handler req)))
 
 (defn wrap-docs
   [handler docs]
@@ -51,7 +78,6 @@
 
 (defn make-users-handler
   []
-  (log/info "Got here!")
   (-> (fn [req]
         {:status 200
          :headers {"Content-Type" "application/json"}
@@ -175,14 +201,17 @@
            aux-handler-mapping (ys/ask :aux-handler-mapping)]
     (ys/->dep
      (yc/->component
-      (-> (make-handler route-mapping (merge api-handler-mapping aux-handler-mapping))
-          (wrap-logging))))))
+      (let [wrapped-api-handler-mapping (wrap-each-handler api-handler-mapping [wrap-do-something
+                                                                                wrap-return-json])]
+        (-> (make-handler route-mapping (merge wrapped-api-handler-mapping
+                                               aux-handler-mapping))
+            (wrap-logging)))))))
 
 (defn make-Δ-config
   []
   (ys/->dep
    (yc/->component
-    (nomad/read-config
+    (n/read-config
      (io/resource "config.edn")))))
 
 (defn make-Δ-http-server
