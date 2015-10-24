@@ -20,41 +20,47 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(s/defschema User {:id s/Str
-                   :name s/Str
-                   :address {:street s/Str
-                             :city (s/enum :tre :hki)}})
+(s/defschema User {:id s/Int
+                   :name s/Str})
 
-(s/defschema Article {:id s/Str
+(s/defschema Article {:id s/Int
                       :title s/Str
                       :text s/Str})
 
-(s/defschema UsersResponse [User])
+(s/defschema UsersResponse {:users [User]})
 
-(s/defschema CreateUserResponse User)
+(s/defschema CreateUserResponse {:user User})
 
-(s/defschema ArticlesResponse [Article])
+(s/defschema ArticlesResponse {:articles [Article]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn with-docs
+(defn wrap-docs
   [handler docs]
   (vary-meta handler assoc :docs docs))
 
+(defn wrap-logging
+  [handler]
+  (fn [{:keys [uri] :as req}]
+    (log/debug "Request to" uri)
+    (handler req)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defn make-users-handler
   []
-  (-> (fn [{:keys [uri]}]
-        (log/debug "Request to" uri)
+  (log/info "Got here!")
+  (-> (fn [req]
         {:status 200
          :headers {"Content-Type" "application/json"}
-         :body (str "A list of users")})
+         :body (->> {:users [{:id 123, :name "Bob"}
+                             {:id 321, :name "Jane"}]}
+                    (s/validate UsersResponse)
+                    generate-string)})
 
-      (with-docs {:summary "Gets a list of users"
+      (wrap-docs {:summary "Gets a list of users"
                   :description "Lists all the users"
                   :tags ["Users"]
                   :responses {200 {:schema UsersResponse
@@ -62,13 +68,14 @@
 
 (defn make-create-user-handler
   []
-  (-> (fn [{:keys [uri]}]
-        (log/debug "Request to" uri)
+  (-> (fn [req]
         {:status 200
          :headers {"Content-Type" "application/json"}
-         :body (str "Create a user")})
+         :body (->> {:user {:id 456 :name "Alice"}}
+                    (s/validate CreateUserResponse)
+                    generate-string)})
 
-      (with-docs {:summary "Creates a user"
+      (wrap-docs {:summary "Creates a user"
                   :description "Creates a user"
                   :tags ["Users"]
                   :responses {201 {:schema CreateUserResponse
@@ -76,13 +83,15 @@
 
 (defn make-articles-handler
   []
-  (-> (fn [{:keys [uri]}]
-        (log/debug "Request to" uri)
+  (-> (fn [req]
         {:status 200
          :headers {"Content-Type" "application/json"}
-         :body (str "A list of articles")})
+         :body (->> {:articles [{:id 876, :title "Things I like", :text "I like cheese and bread."}
+                                {:id 346, :title "Superconductivity", :text "It's really hard to understand."}]}
+                    (s/validate ArticlesResponse)
+                    generate-string)})
 
-      (with-docs {:summary "Gets a list of articles"
+      (wrap-docs {:summary "Gets a list of articles"
                   :description "Lists all the articles"
                   :tags ["Articles"]
                   :responses {200 {:schema ArticlesResponse
@@ -91,7 +100,6 @@
 (defn make-swagger-ui-handler
   []
   (fn [{:keys [uri]}]
-    (log/debug "Request to" uri)
     (if-let [resource (->> (if (= uri "/swagger-ui") "/index.html" "")
                            (str (replace-first uri #"/" ""))
                            (io/resource))]
@@ -99,7 +107,7 @@
       {:status 404})))
 
 (defn generate-api-docs
-  [api-handlers routes]
+  [api-handler-mapping route-mapping]
   (s/with-fn-validation
     (rs/swagger-json
      {:info {:version "1.0.0"
@@ -110,32 +118,28 @@
       :paths (apply
               merge-with
               merge
-              (for [[handler-key _] api-handlers
+              (for [[handler-key _] api-handler-mapping
                     request-method [:get :post :put :delete :head :options]
-                    :let [path (b/path-for routes handler-key)]
-                    :when (= handler-key (:handler (b/match-route routes path :request-method request-method)))]
-                {path {request-method (:docs (meta (handler-key api-handlers)))}}))})))
+                    :let [path (b/path-for route-mapping handler-key)]
+                    :when (= handler-key (:handler (b/match-route route-mapping path :request-method request-method)))]
+                {path {request-method (:docs (meta (handler-key api-handler-mapping)))}}))})))
 
 (defn make-api-docs-handler
-  [api-handlers routes]
-  (fn [{:keys [uri]}]
-    (log/debug "Request to" uri)
+  [api-handler-mapping route-mapping]
+  (fn [req]
     {:status 200
      :headers {"Content-Type" "application/json"}
-     :body (-> (generate-api-docs api-handlers routes)
-               generate-string)}))
+     :body (generate-string (generate-api-docs api-handler-mapping route-mapping))}))
 
 (defn make-not-found-handler
   []
-  (fn [{:keys [uri]}]
-    (log/debug "Request to" uri)
-    {:status 404}))
+  (fn [req] {:status 404}))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn make-Δ-routes
+(defn make-Δ-route-mapping
   []
   (ys/->dep
    (yc/->component
@@ -146,7 +150,7 @@
           "api-docs" {:get :api-docs}
           true :not-found}])))
 
-(defn make-Δ-api-handlers
+(defn make-Δ-api-handler-mapping
   []
   (ys/->dep
    (yc/->component
@@ -154,24 +158,25 @@
      :create-user (make-create-user-handler)
      :articles (make-articles-handler)})))
 
-(defn make-Δ-aux-handlers
+(defn make-Δ-aux-handler-mapping
   []
-  (c/mlet [api-handlers (ys/ask :api-handlers)
-           routes (ys/ask :routes)]
+  (c/mlet [api-handler-mapping (ys/ask :api-handler-mapping)
+           route-mapping (ys/ask :route-mapping)]
     (ys/->dep
      (yc/->component
       {:swagger-ui (make-swagger-ui-handler)
-       :api-docs (make-api-docs-handler api-handlers routes)
+       :api-docs (make-api-docs-handler api-handler-mapping route-mapping)
        :not-found (make-not-found-handler)}))))
 
 (defn make-Δ-handler
   []
-  (c/mlet [routes (ys/ask :routes)
-           api-handlers (ys/ask :api-handlers)
-           aux-handlers (ys/ask :aux-handlers)]
+  (c/mlet [route-mapping (ys/ask :route-mapping)
+           api-handler-mapping (ys/ask :api-handler-mapping)
+           aux-handler-mapping (ys/ask :aux-handler-mapping)]
     (ys/->dep
      (yc/->component
-      (merge api-handlers aux-handlers)))))
+      (-> (make-handler route-mapping (merge api-handler-mapping aux-handler-mapping))
+          (wrap-logging))))))
 
 (defn make-Δ-config
   []
@@ -183,11 +188,9 @@
 (defn make-Δ-http-server
   []
   (c/mlet [http-server-port (ys/ask :config :http-server-port)
-           routes (ys/ask :routes)
            handler (ys/ask :handler)]
     (ys/->dep
-     (let [stop-fn! (run-server (make-handler routes handler)
-                                {:port http-server-port :join? false})]
+     (let [stop-fn! (run-server handler {:port http-server-port :join? false})]
         (log/info "Starting HTTP server on port" http-server-port)
         (yc/->component
           nil
@@ -198,9 +201,9 @@
 (defn make-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
-                    (ys/named make-Δ-routes :routes)
-                    (ys/named make-Δ-api-handlers :api-handlers)
-                    (ys/named make-Δ-aux-handlers :aux-handlers)
+                    (ys/named make-Δ-route-mapping :route-mapping)
+                    (ys/named make-Δ-api-handler-mapping :api-handler-mapping)
+                    (ys/named make-Δ-aux-handler-mapping :aux-handler-mapping)
                     (ys/named make-Δ-handler :handler)
                     (ys/named make-Δ-http-server :http-server)}))
 
