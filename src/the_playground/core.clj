@@ -65,10 +65,10 @@
 
 (defn wrap-logging
   [handler]
-  (fn [{:keys [uri] :as req}]
-    (log/debug "Incoming request to" uri)
+  (fn [{:keys [uri request-method] :as req}]
+    (log/debug "Incoming" (name request-method) "request to" uri)
     (let [{:keys [status] :as res} (handler req)]
-      (log/debug "Outgoing response with status" status "for request to" uri)
+      (log/debug "Outgoing" status "response for" (name request-method) "request to" uri)
       res)))
 
 (defn wrap-exception-catching
@@ -201,7 +201,7 @@
       (let [wrapped-api-handler-mapping (wrap-each-handler api-handler-mapping [wrap-json-response])]
         (-> (make-handler route-mapping (merge wrapped-api-handler-mapping
                                                aux-handler-mapping))
-            (wrap-cors :access-control-allow-origin [#".*"]
+            (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
                        :access-control-allow-methods [:get :put :post :delete])
             (wrap-exception-catching)
             (wrap-logging)))))))
