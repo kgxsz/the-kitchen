@@ -12,6 +12,7 @@
             [ring.swagger.swagger2 :as rs]
             [ring.util.response :refer (url-response)]
             [schema.core :as s]
+            [ring.middleware.cors :refer [wrap-cors]]
             [slingshot.slingshot :refer [try+]]
             [yoyo :as y]
             [yoyo.core :as yc]
@@ -65,9 +66,9 @@
 (defn wrap-logging
   [handler]
   (fn [{:keys [uri] :as req}]
-    (log/debug "Processing request to" uri)
+    (log/debug "Incoming request to" uri)
     (let [{:keys [status] :as res} (handler req)]
-      (log/debug "Dispatching response with status" status "for request to" uri)
+      (log/debug "Outgoing response with status" status "for request to" uri)
       res)))
 
 (defn wrap-exception-catching
@@ -200,8 +201,10 @@
       (let [wrapped-api-handler-mapping (wrap-each-handler api-handler-mapping [wrap-json-response])]
         (-> (make-handler route-mapping (merge wrapped-api-handler-mapping
                                                aux-handler-mapping))
-            (wrap-logging)
-            (wrap-exception-catching)))))))
+            (wrap-cors :access-control-allow-origin [#".*"]
+                       :access-control-allow-methods [:get :put :post :delete])
+            (wrap-exception-catching)
+            (wrap-logging)))))))
 
 (defn make-Δ-config
   []
