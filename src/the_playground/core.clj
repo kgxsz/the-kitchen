@@ -16,28 +16,25 @@
 
 (defn make-Δ-config
   []
-  (ys/->dep
-   (yc/->component
-    (n/read-config
-     (io/resource "config.edn")))))
+  (yc/->component
+   (n/read-config
+    (io/resource "config.edn"))))
 
 (defn make-Δ-route-mapping
   []
-  (ys/->dep
-   (yc/->component
-    ["/" {"api" {"/users" {:get :users
-                           :post :create-user}
-                 "/articles" {:get :articles}}
-          "api-docs" {:get :api-docs}
-          true :not-found}])))
+  (yc/->component
+   ["/" {"api" {"/users" {:get :users
+                          :post :create-user}
+                "/articles" {:get :articles}}
+         "api-docs" {:get :api-docs}
+         true :not-found}]))
 
 (defn make-Δ-api-handler-mapping
   []
-  (ys/->dep
-   (yc/->component
-    {:users (api/make-users-handler)
-     :create-user (api/make-create-user-handler)
-     :articles (api/make-articles-handler)})))
+  (yc/->component
+   {:users (api/make-users-handler)
+    :create-user (api/make-create-user-handler)
+    :articles (api/make-articles-handler)}))
 
 (defn make-Δ-aux-handler-mapping
   []
@@ -76,7 +73,7 @@
             (log/info "Stopping HTTP server")
             (stop-fn! :timeout 500)))))))
 
-(defn make-system
+(defn make-Δ-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
                     (ys/named make-Δ-route-mapping :route-mapping)
@@ -88,5 +85,5 @@
 (defn -main
   []
   (log/info "Starting system")
-  (y/set-system-fn! #'make-system)
+  (y/set-system-fn! #'make-Δ-system)
   (y/start!))
