@@ -1,8 +1,4 @@
-{:nomad/includes [#nomad/file "~/.nomad/the-playground.edn"]
-
- :http-server-port 8080
- :password #nomad/secret [:key "8d72a0ec8fde39e9134a6bca2d8fc4f88bfae1bf65e118dc16c39abd9d8e5bb5"]
-
+{:http-server-port 8080
  :nomad/environments {"test" {}
                       "staging" {}
-                      "production" {}}}
+                      "production" {:http-server-port #nomad/env-var "PORT"}}}
