@@ -18,3 +18,8 @@
 - After any changes you make, you can reload the system with `(yoyo/reload!)`.
 - To run tests from the repl, do `(boot (test))`.
 - To run tests automatically on file changes, do `boot auto-test` in a terminal session.
+
+
+## Exploring your API with Swagger
+- Each handler can be wrapped with documentation middleware.
+- Hit (http://petstore.swagger.io)[http://petstore.swagger.io/] and point Swagger to `http://localhost:8080/api-docs` to explore the API.
