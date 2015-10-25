@@ -1,7 +1,7 @@
 #The Playground 
 
 #####A respository to experiment and mess around.
-[![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground) [![Build Status](https://travis-ci.org/kgxsz/the-playground.svg?branch=master)](https://travis-ci.org/kgxsz/the-playground) [![Build Status](https://snap-ci.com/kgxsz/the-playground/branch/master/build_image)](https://snap-ci.com/kgxsz/the-playground/branch/master)
+[![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground) [![Build Status](https://snap-ci.com/kgxsz/the-playground/branch/master/build_image)](https://snap-ci.com/kgxsz/the-playground/branch/master)
 
 ## Local development setup
 
