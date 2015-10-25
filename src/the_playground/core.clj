@@ -1,6 +1,7 @@
 (ns the-playground.core
   (:gen-class)
-  (:require [bidi.bidi :as b]
+  (:require [the-playground.middleware :as mw]
+            [bidi.bidi :as b]
             [bidi.ring :refer [make-handler]]
             [cats.core :as c]
             [cheshire.core :refer :all]
@@ -8,12 +9,10 @@
             [clojure.tools.logging :as log]
             [nomad :as n]
             [org.httpkit.server :refer [run-server]]
+            [ring.middleware.cors :refer [wrap-cors]]
             [ring.swagger.swagger2 :as rs]
             [schema.core :as s]
-            [ring.middleware.cors :refer [wrap-cors]]
-            [slingshot.slingshot :refer [try+]]
             [yoyo :as y]
-            [clojure.string :refer [upper-case]]
             [yoyo.core :as yc]
             [yoyo.system :as ys]))
 
@@ -38,51 +37,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn wrap-each-handler
-  [handler-mapping middleware]
-  "Wraps each of the supplied middleware around each handler defined within the
-   the handler mapping. This is useful for wrapping many handlers at once,
-   without affecting every handler in the application."
-  (into {}
-    (for [[handler-key handler] handler-mapping]
-      [handler-key ((apply comp middleware) handler)])))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defn wrap-json-response
-  [handler]
-  (fn [req]
-    (-> (handler req)
-        (update :body generate-string)
-        (update :headers assoc "Content-Type" "application/json"))))
-
-(defn wrap-docs
-  [handler docs]
-  (vary-meta handler assoc :docs docs))
-
-(defn wrap-logging
-  [handler]
-  (fn [{:keys [uri request-method] :as req}]
-    (log/debug "Incoming" (-> request-method name upper-case) "request to" uri)
-    (let [{:keys [status] :as res} (handler req)]
-      (log/debug "Outgoing" status "response for" (-> request-method name upper-case) "request to" uri)
-      res)))
-
-(defn wrap-exception-catching
-  [handler]
-  (fn [req]
-    (try+
-     (handler req)
-     (catch Object e
-       (log/error  "Unhandled exception:" e)
-       {:status 500}))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 (defn make-users-handler
   []
   (-> (fn [req]
@@ -91,7 +45,7 @@
                  {:users [{:id 123, :name "Bob"}
                           {:id 321, :name "Jane"}]})})
 
-      (wrap-docs {:summary "Gets a list of users"
+      (mw/wrap-docs {:summary "Gets a list of users"
                   :description "Lists all the users"
                   :tags ["Users"]
                   :responses {200 {:schema UsersResponse
@@ -104,7 +58,7 @@
          :body (s/validate CreateUserResponse
                  {:user {:id 456 :name "Alice"}})})
 
-      (wrap-docs {:summary "Creates a user"
+      (mw/wrap-docs {:summary "Creates a user"
                   :description "Creates a user"
                   :tags ["Users"]
                   :responses {201 {:schema CreateUserResponse
@@ -118,7 +72,7 @@
                  {:articles [{:id 176, :title "Things I like", :text "I like cheese and bread."}
                              {:id 346, :title "Superconductivity", :text "It's really hard to understand."}]})})
 
-      (wrap-docs {:summary "Gets a list of articles"
+      (mw/wrap-docs {:summary "Gets a list of articles"
                   :description "Lists all the articles"
                   :tags ["Articles"]
                   :responses {200 {:schema ArticlesResponse
@@ -188,11 +142,11 @@
      (yc/->component
       (-> (make-handler route-mapping (merge api-handler-mapping
                                              aux-handler-mapping))
-          (wrap-json-response)
-          (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
+          (mw/wrap-json-response)
+          (mw/wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
                      :access-control-allow-methods [:get :put :post :delete])
-          (wrap-exception-catching)
-          (wrap-logging))))))
+          (mw/wrap-exception-catching)
+          (mw/wrap-logging))))))
 
 (defn make-Δ-config
   []
