@@ -16,11 +16,9 @@
 
 (defn make-Δ-config
   []
-  (let [config (n/read-config (io/resource "config.edn"))]
-    (log/info "config is:" config)
-    (log/info "hey:" (System/getenv "DUMMY"))
-    (yc/->component
-     config)))
+  (yc/->component
+   (n/read-config
+    (io/resource "config.edn"))))
 
 (defn make-Δ-route-mapping
   []
