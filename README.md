@@ -22,4 +22,4 @@
 
 ## Exploring your API with Swagger
 - Each handler can be wrapped with documentation middleware.
-- Hit (http://petstore.swagger.io)[http://petstore.swagger.io/] and point Swagger to `http://localhost:8080/api-docs` to explore the API.
+- Hit [http://petstore.swagger.io](http://petstore.swagger.io/) and point Swagger to `http://localhost:8080/api-docs` to explore the API.
