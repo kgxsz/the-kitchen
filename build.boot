@@ -27,7 +27,7 @@
          '[adzerk.boot-test :refer [test]])
 
 (deftask build
-  "Build the uberjar"
+  "Build the uberjar."
   []
   (comp
    (aot :namespace '#{the-playground.core})
@@ -35,9 +35,16 @@
    (uber)
    (jar :main 'the-playground.core)))
 
-(deftask dev
+(deftask auto-test
+  "Run tests on any file changes."
   []
-  "Setup a development environmet"
+  (set-env! :source-paths #{"src" "test"})
+  (comp (watch) (speak) (test)))
+
+
+(deftask dev
+  "Start a development environment."
+  []
   (set-env! :source-paths #{"src" "test"})
   (comp
    (repl :server true :port 8088)
