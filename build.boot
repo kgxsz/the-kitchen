@@ -10,7 +10,7 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [jarohen/yoyo "0.0.6-beta2"]
-                 [jarohen/nomad "0.8.0-beta3"
+                 [jarohen/nomad "0.7.2"
                   :exclusions [org.clojure/clojure
                                org.clojure/tools.nrepl]]
                  [http-kit "2.1.19"]

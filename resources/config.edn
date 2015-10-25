@@ -1,4 +1,5 @@
 {:http-server-port 8080
  :nomad/environments {"test" {}
                       "staging" {}
-                      "production" {:http-server-port #nomad/env-var "PORT"}}}
+                      "production" {:dummy #nomad/envf ["%s" DUMMY]
+                                    :http-server-port 8082}}}
