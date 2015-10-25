@@ -1,5 +1,5 @@
 (ns the-playground.middleware
-  (:require [cheshire.core :refer :all]
+  (:require [cheshire.core :refer [generate-string]]
             [clojure.string :refer [upper-case]]
             [clojure.tools.logging :as log]
             [slingshot.slingshot :refer [try+]]))

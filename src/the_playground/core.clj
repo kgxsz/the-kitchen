@@ -1,88 +1,67 @@
 (ns the-playground.core
   (:gen-class)
-  (:require [the-playground.middleware :as mw]
+  (:require [the-playground.middleware :as m]
+            [the-playground.schema :as s]
             [bidi.bidi :as b]
             [bidi.ring :refer [make-handler]]
             [cats.core :as c]
-            [cheshire.core :refer :all]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [nomad :as n]
             [org.httpkit.server :refer [run-server]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.swagger.swagger2 :as rs]
-            [schema.core :as s]
+            [schema.core :as sc]
             [yoyo :as y]
             [yoyo.core :as yc]
             [yoyo.system :as ys]))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(s/defschema User {:id s/Int
-                   :name s/Str})
-
-(s/defschema Article {:id s/Int
-                      :title s/Str
-                      :text s/Str})
-
-(s/defschema UsersResponse {:users [User]})
-
-(s/defschema CreateUserResponse {:user User})
-
-(s/defschema ArticlesResponse {:articles [Article]})
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (defn make-users-handler
   []
   (-> (fn [req]
         {:status 200
-         :body (s/validate UsersResponse
+         :body (sc/validate s/UsersResponse
                  {:users [{:id 123, :name "Bob"}
                           {:id 321, :name "Jane"}]})})
 
-      (mw/wrap-docs {:summary "Gets a list of users"
+      (m/wrap-docs {:summary "Gets a list of users"
                   :description "Lists all the users"
                   :tags ["Users"]
-                  :responses {200 {:schema UsersResponse
+                  :responses {200 {:schema s/UsersResponse
                                    :description "The list of users"}}})))
 
 (defn make-create-user-handler
   []
   (-> (fn [req]
         {:status 201
-         :body (s/validate CreateUserResponse
+         :body (sc/validate s/CreateUserResponse
                  {:user {:id 456 :name "Alice"}})})
 
-      (mw/wrap-docs {:summary "Creates a user"
+      (m/wrap-docs {:summary "Creates a user"
                   :description "Creates a user"
                   :tags ["Users"]
-                  :responses {201 {:schema CreateUserResponse
+                  :responses {201 {:schema s/CreateUserResponse
                                    :description "The created user"}}})))
 
 (defn make-articles-handler
   []
   (-> (fn [req]
         {:status 200
-         :body (s/validate ArticlesResponse
+         :body (sc/validate s/ArticlesResponse
                  {:articles [{:id 176, :title "Things I like", :text "I like cheese and bread."}
                              {:id 346, :title "Superconductivity", :text "It's really hard to understand."}]})})
 
-      (mw/wrap-docs {:summary "Gets a list of articles"
+      (m/wrap-docs {:summary "Gets a list of articles"
                   :description "Lists all the articles"
                   :tags ["Articles"]
-                  :responses {200 {:schema ArticlesResponse
+                  :responses {200 {:schema s/ArticlesResponse
                                    :description "The list of articles"}}})))
 
 (defn make-api-docs-handler
   [api-handler-mapping route-mapping]
   (fn [req]
     {:status 200
-     :body (s/with-fn-validation
+     :body (sc/with-fn-validation
              (rs/swagger-json
                {:info {:version "1.0.0"
                        :title "The Playground"
@@ -142,11 +121,11 @@
      (yc/->component
       (-> (make-handler route-mapping (merge api-handler-mapping
                                              aux-handler-mapping))
-          (mw/wrap-json-response)
-          (mw/wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
+          (m/wrap-json-response)
+          (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
                      :access-control-allow-methods [:get :put :post :delete])
-          (mw/wrap-exception-catching)
-          (mw/wrap-logging))))))
+          (m/wrap-exception-catching)
+          (m/wrap-logging))))))
 
 (defn make-Δ-config
   []
