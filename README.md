@@ -1,7 +1,7 @@
 #The Playground 
 
 #####A respository to experiment and mess around.
-[![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground)
+[![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground) [![Build Status](https://travis-ci.org/kgxsz/the-playground.svg?branch=master)](https://travis-ci.org/kgxsz/the-playground)
 
 ## Local development setup
 
