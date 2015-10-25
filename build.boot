@@ -1,5 +1,5 @@
 (set-env!
- :source-paths #{"src"}
+ :source-paths #{"src" "test"}
  :resource-paths #{"resources"}
 
  :dependencies '[[org.clojure/clojure "1.7.0"]
@@ -29,6 +29,7 @@
 (deftask build
   "Build the uberjar."
   []
+  (set-env! :source-paths #{"src"})
   (comp
    (aot :namespace '#{the-playground.core})
    (pom :project 'the-playground :version "0.1.0")
@@ -38,14 +39,12 @@
 (deftask auto-test
   "Run tests on any file changes."
   []
-  (set-env! :source-paths #{"src" "test"})
   (comp (watch) (speak) (test)))
 
 
 (deftask dev
   "Start a development environment."
   []
-  (set-env! :source-paths #{"src" "test"})
   (comp
    (repl :server true :port 8088)
    (with-pre-wrap fileset
