@@ -15,6 +15,7 @@
             [ring.middleware.cors :refer [wrap-cors]]
             [slingshot.slingshot :refer [try+]]
             [yoyo :as y]
+            [clojure.string :refer [upper-case]]
             [yoyo.core :as yc]
             [yoyo.system :as ys]))
 
@@ -66,9 +67,9 @@
 (defn wrap-logging
   [handler]
   (fn [{:keys [uri request-method] :as req}]
-    (log/debug "Incoming" (name request-method) "request to" uri)
+    (log/debug "Incoming" (-> request-method name upper-case) "request to" uri)
     (let [{:keys [status] :as res} (handler req)]
-      (log/debug "Outgoing" status "response for" (name request-method) "request to" uri)
+      (log/debug "Outgoing" status "response for" (-> request-method name upper-case) "request to" uri)
       res)))
 
 (defn wrap-exception-catching
@@ -125,15 +126,6 @@
                   :responses {200 {:schema ArticlesResponse
                                    :description "The list of articles"}}})))
 
-(defn make-swagger-ui-handler
-  []
-  (fn [{:keys [uri]}]
-    (if-let [resource (->> (if (= uri "/swagger-ui") "/index.html" "")
-                           (str (replace-first uri #"/" ""))
-                           (io/resource))]
-      (url-response resource)
-      {:status 404})))
-
 (defn make-api-docs-handler
   [api-handler-mapping route-mapping]
   (fn [req]
@@ -169,7 +161,6 @@
     ["/" {"api" {"/users" {:get :users
                            :post :create-user}
                  "/articles" {:get :articles}}
-          "swagger-ui" {:get {true :swagger-ui}}
           "api-docs" {:get :api-docs}
           true :not-found}])))
 
@@ -187,8 +178,7 @@
            route-mapping (ys/ask :route-mapping)]
     (ys/->dep
      (yc/->component
-      {:swagger-ui (make-swagger-ui-handler)
-       :api-docs (wrap-json-response (make-api-docs-handler api-handler-mapping route-mapping))
+      {:api-docs (make-api-docs-handler api-handler-mapping route-mapping)
        :not-found (make-not-found-handler)}))))
 
 (defn make-Δ-handler
@@ -198,13 +188,13 @@
            aux-handler-mapping (ys/ask :aux-handler-mapping)]
     (ys/->dep
      (yc/->component
-      (let [wrapped-api-handler-mapping (wrap-each-handler api-handler-mapping [wrap-json-response])]
-        (-> (make-handler route-mapping (merge wrapped-api-handler-mapping
-                                               aux-handler-mapping))
-            (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
-                       :access-control-allow-methods [:get :put :post :delete])
-            (wrap-exception-catching)
-            (wrap-logging)))))))
+      (-> (make-handler route-mapping (merge api-handler-mapping
+                                             aux-handler-mapping))
+          (wrap-json-response)
+          (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
+                     :access-control-allow-methods [:get :put :post :delete])
+          (wrap-exception-catching)
+          (wrap-logging))))))
 
 (defn make-Δ-config
   []

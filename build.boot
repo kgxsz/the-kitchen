@@ -17,7 +17,6 @@
                  [bidi "1.20.3"]
                  [metosin/ring-swagger "0.21.0"]
                  [prismatic/schema "1.0.1"]
-                 [metosin/ring-swagger-ui "2.1.3"]
                  [ring/ring-core "1.4.0"]
                  [cheshire "5.5.0"]
                  [slingshot "0.12.2"]
