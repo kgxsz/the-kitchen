@@ -24,6 +24,12 @@
 (deftest end-to-end-test
   (yc/with-component (make-Δ-test-system)
     (fn [test-system]
+
+      (testing "A The list of users can be explored"
+        (let [users-res @(http/get "http://localhost:8084/api/users")]
+          (is (= 2 (-> users-res :body (parse-string true) :users count)))))
+
+
       (testing "A user can be created"
         (let [users-res-initial @(http/get "http://localhost:8084/api/users")
               create-user-res @(http/post "http://localhost:8084/api/users")
@@ -31,4 +37,8 @@
 
           (is (= 2 (-> users-res-initial :body (parse-string true) :users count)))
           (is (= 201 (:status create-user-res)))
-          (is (= 2 (-> users-res-final :body (parse-string true) :users count))))))))
+          (is (= 2 (-> users-res-final :body (parse-string true) :users count)))))
+
+      (testing "A The list of articles can be explored"
+        (let [articless-res @(http/get "http://localhost:8084/api/articles")]
+          (is (= 2 (-> articless-res :body (parse-string true) :articles count))))))))
