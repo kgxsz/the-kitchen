@@ -1,8 +1,7 @@
 #The Playground 
 
-[![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground)
-
 #####A respository to experiment and mess around.
+[![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground)
 
 ## Local development setup
 
