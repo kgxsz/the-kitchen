@@ -6,6 +6,7 @@
 ## Local development setup
 
 - You will need to install [Boot](https://github.com/boot-clj/boot#install).
+- In order to decrypt the private variables in the config, you will need to setup your nomad credentials in `~/.nomad/the-playground.edn`.
 - For a no frills build: `boot build`. This will produce an uberjar.
 - You can run it with `java -jar target/the-playground-x.y.z.jar`.
 - Run `boot dev` to get a development environment going.
