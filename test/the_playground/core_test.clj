@@ -9,8 +9,7 @@
 (defn make-Δ-test-config
   []
   (yc/->component
-   {:http-server-port 8084
-    :password "mock password"}))
+   {:http-server-port 8084}))
 
 (defn make-Δ-test-system
   []
