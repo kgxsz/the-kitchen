@@ -32,7 +32,7 @@
   (set-env! :source-paths #{"src"})
   (comp
    (aot :namespace '#{the-playground.core})
-   (pom :project 'the-playground :version "0.1.0")
+   (pom :project 'the-playground :version "1.0.0")
    (uber)
    (jar :main 'the-playground.core)))
 
