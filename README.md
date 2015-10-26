@@ -2,11 +2,9 @@
 
 #####A respository to experiment and mess around.
 
-[![Build Status](https://snap-ci.com/kgxsz/the-playground/branch/master/build_image)](https://snap-ci.com/kgxsz/the-playground/branch/master)
-
-[![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground)
-
-[![Swagger Validation](http://online.swagger.io/validator/?url=https://kgxsz-the-playground.herokuapp.com/api-docs)](http://petstore.swagger.io/?url=https://kgxsz-the-playground.herokuapp.com/api-docs)
+| SnapCI | Waffle | Swagger |
+| :----: | :----: | :-----: |
+| [![Build Status](https://snap-ci.com/kgxsz/the-playground/branch/master/build_image)](https://snap-ci.com/kgxsz/the-playground/branch/master) | [![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground) | [![Swagger Validation](http://online.swagger.io/validator/?url=https://kgxsz-the-playground.herokuapp.com/api-docs)](http://petstore.swagger.io/?url=https://kgxsz-the-playground.herokuapp.com/api-docs) |
 
 ## Local development setup
 
