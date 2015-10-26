@@ -22,4 +22,5 @@
 
 ## Exploring your API with Swagger
 - Each handler can be wrapped with documentation middleware.
-- Hit [http://petstore.swagger.io](http://petstore.swagger.io/) and point Swagger to `http://localhost:8080/api-docs` to explore the API.
+- To explore your API running on localhost, hit [local Swagger](http://petstore.swagger.io/?url=http://localhost:8080/api-docs).
+- To view the API running on Heroku, hit [production Swagger](http://petstore.swagger.io/?url=https://kgxsz-the-playground.herokuapp.com/api-docs). 
