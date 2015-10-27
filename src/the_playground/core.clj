@@ -52,9 +52,10 @@
            api-handler-mapping (ys/ask :api-handler-mapping)
            aux-handler-mapping (ys/ask :aux-handler-mapping)]
     (ys/->dep
-     (let [handler-mapping (merge api-handler-mapping aux-handler-mapping)]
+     (let [handler-mapping (merge api-handler-mapping aux-handler-mapping)
+           handler (make-handler route-mapping handler-mapping)]
        (yc/->component
-        (-> (make-handler route-mapping handler-mapping)
+        (-> handler
             (wrap-json-body {:keywords? true})
             (m/wrap-json-response)
             (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
