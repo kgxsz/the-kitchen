@@ -5,7 +5,7 @@
 
 (defn make-api-docs-handler
   [api-handler-mapping route-mapping]
-  (fn [req]
+  (fn [_]
     {:status 200
      :body (sc/with-fn-validation
              (rs/swagger-json
@@ -25,4 +25,4 @@
 
 (defn make-not-found-handler
   []
-  (fn [req] {:status 404}))
+  (fn [_] {:status 404}))

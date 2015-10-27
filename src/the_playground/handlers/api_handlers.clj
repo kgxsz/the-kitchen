@@ -19,14 +19,17 @@
 
 (defn make-create-user-handler
   []
-  (-> (fn [req]
+  (-> (fn [{:keys [body request-method uri] :as req}]
         {:status 201
          :body (sc/validate s/CreateUserResponse
-                            {:user {:id 456 :name "Alice"}})})
+                            {:user {:id 456 :name (:name body)}})})
+
+      (m/wrap-validate-request s/CreateUserRequest)
 
       (m/wrap-docs {:summary "Creates a user"
                     :description "Creates a user"
                     :tags ["Users"]
+                    :parameters {:body s/CreateUserRequest}
                     :responses {201 {:schema s/CreateUserResponse
                                      :description "The created user"}}})))
 

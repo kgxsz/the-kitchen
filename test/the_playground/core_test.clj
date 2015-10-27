@@ -1,6 +1,6 @@
 (ns the-playground.core-test
   (:require [the-playground.core :refer :all]
-            [cheshire.core :refer [parse-string]]
+            [cheshire.core :refer [parse-string generate-string]]
             [clojure.test :refer :all]
             [yoyo.core :as yc]
             [org.httpkit.client :as http]
@@ -31,7 +31,10 @@
 
       (testing "A user can be created"
         (let [users-res-initial @(http/get "http://localhost:8084/api/users")
-              create-user-res @(http/post "http://localhost:8084/api/users")
+              create-user-res @(http/post "http://localhost:8084/api/users"
+                                          {:headers {"Content-Type" "application/json"
+                                                     "Accept" "application/json"}
+                                           :body (generate-string {:name "Peter"})})
               users-res-final @(http/get "http://localhost:8084/api/users")]
 
           (is (= 2 (-> users-res-initial :body (parse-string true) :users count)))

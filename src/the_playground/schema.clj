@@ -10,6 +10,8 @@
 
 (s/defschema UsersResponse {:users [User]})
 
+(s/defschema CreateUserRequest (dissoc User :id))
+
 (s/defschema CreateUserResponse {:user User})
 
 (s/defschema ArticlesResponse {:articles [Article]})
