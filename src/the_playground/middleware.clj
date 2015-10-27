@@ -1,7 +1,7 @@
 (ns the-playground.middleware
   (:require [the-playground.schema :as s]
+            [the-playground.util :refer [format-request-method]]
             [cheshire.core :refer [generate-string]]
-            [clojure.string :refer [upper-case]]
             [clojure.tools.logging :as log]
             [schema.core :as sc]
             [slingshot.slingshot :refer [try+]]))
@@ -13,7 +13,7 @@
      (sc/validate s/CreateUserRequest body)
      (handler request)
      (catch [:type :schema.core/error] {:keys [error]}
-       (log/debug "Invalid" (-> request-method name upper-case) "request to" uri "-" error)
+       (log/debug "Invalid" (format-request-method request-method)  "request to" uri "-" error)
        {:status 400
         :body error}))))
 
@@ -31,9 +31,9 @@
 (defn wrap-logging
   [handler]
   (fn [{:keys [uri request-method] :as request}]
-    (log/debug "Incoming" (-> request-method name upper-case) "request to" uri)
+    (log/debug "Incoming" (format-request-method request-method) "request to" uri)
     (let [{:keys [status] :as response} (handler request)]
-      (log/debug "Outgoing" status "response for" (-> request-method name upper-case) "request to" uri)
+      (log/debug "Outgoing" status "response for" (format-request-method request-method) "request to" uri)
       response)))
 
 (defn wrap-exception-catching
@@ -44,4 +44,3 @@
      (catch Object e
        (log/error  "Unhandled exception -" e)
        {:status 500}))))
-
