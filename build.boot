@@ -21,6 +21,7 @@
                  [cheshire "5.5.0"]
                  [slingshot "0.12.2"]
                  [ring-cors "0.1.7"]
+                 [ring/ring-json "0.4.0"]
                  [adzerk/boot-test "1.0.4" :scope "test"]])
 
 (require '[the-playground.core]

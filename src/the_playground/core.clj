@@ -10,6 +10,7 @@
             [nomad :as n]
             [org.httpkit.server :refer [run-server]]
             [ring.middleware.cors :refer [wrap-cors]]
+            [ring.middleware.json :refer [wrap-json-body]]
             [yoyo :as y]
             [yoyo.core :as yc]
             [yoyo.system :as ys]))
@@ -51,14 +52,15 @@
            api-handler-mapping (ys/ask :api-handler-mapping)
            aux-handler-mapping (ys/ask :aux-handler-mapping)]
     (ys/->dep
-     (yc/->component
-      (-> (make-handler route-mapping (merge api-handler-mapping
-                                             aux-handler-mapping))
-          (m/wrap-json-response)
-          (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
-                     :access-control-allow-methods [:get :put :post :delete])
-          (m/wrap-exception-catching)
-          (m/wrap-logging))))))
+     (let [handler-mapping (merge api-handler-mapping aux-handler-mapping)]
+       (yc/->component
+        (-> (make-handler route-mapping handler-mapping)
+            (wrap-json-body {:keywords? true})
+            (m/wrap-json-response)
+            (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
+                       :access-control-allow-methods [:get :put :post :delete])
+            (m/wrap-exception-catching)
+            (m/wrap-logging)))))))
 
 (defn make-Δ-http-server
   []
