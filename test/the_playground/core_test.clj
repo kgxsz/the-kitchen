@@ -2,8 +2,8 @@
   (:require [the-playground.core :refer :all]
             [cheshire.core :refer [parse-string generate-string]]
             [clojure.test :refer :all]
-            [yoyo.core :as yc]
             [org.httpkit.client :as http]
+            [yoyo.core :as yc]
             [yoyo.system :as ys]))
 
 (defn make-Δ-test-config
@@ -14,10 +14,7 @@
 (defn make-Δ-test-system
   []
   (ys/make-system #{(ys/named make-Δ-test-config :config)
-                    (ys/named make-Δ-route-mapping :route-mapping)
-                    (ys/named make-Δ-api-handler-mapping :api-handler-mapping)
-                    (ys/named make-Δ-aux-handler-mapping :aux-handler-mapping)
-                    (ys/named make-Δ-handler :handler)
+                    (ys/named make-Δ-metrics-registry :metrics-registry)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (deftest end-to-end-test
@@ -27,7 +24,6 @@
       (testing "A The list of users can be explored"
         (let [users-res @(http/get "http://localhost:8084/api/users")]
           (is (= 2 (-> users-res :body (parse-string true) :users count)))))
-
 
       (testing "A user can be created"
         (let [users-res-initial @(http/get "http://localhost:8084/api/users")

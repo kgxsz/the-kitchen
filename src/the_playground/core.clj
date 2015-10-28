@@ -3,7 +3,8 @@
   (:require [the-playground.handlers.api-handlers :as api]
             [the-playground.handlers.aux-handlers :as aux]
             [the-playground.middleware :as m]
-            [bidi.ring :refer [make-handler]]
+            [the-playground.util :as u]
+            [bidi.ring :as br]
             [cats.core :as c]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
@@ -13,7 +14,46 @@
             [ring.middleware.json :refer [wrap-json-body]]
             [yoyo :as y]
             [yoyo.core :as yc]
+            [metrics.core :refer [new-registry]]
             [yoyo.system :as ys]))
+
+(defn make-route-mapping
+  []
+  ["/" {"api" {"/users" {:get :users
+                         :post :create-user}
+               "/articles" {:get :articles}}
+        "api-docs" {:get :api-docs}
+        true :not-found}])
+
+(defn make-api-handler-mapping
+  []
+  (c/mlet [metrics-registry (ys/ask :metrics-registry)]
+    (ys/->dep
+     {:users (api/make-users-handler)
+      :create-user (api/make-create-user-handler)
+      :articles (api/make-articles-handler)})))
+
+(defn make-aux-handler-mapping
+  []
+  (c/mlet [metrics-registry (ys/ask :metrics-registry)]
+    (ys/->dep
+     {:api-docs (aux/make-api-docs-handler (make-api-handler-mapping) (make-route-mapping))
+      :not-found (aux/make-not-found-handler)})))
+
+(defn make-handler
+  []
+  (c/mlet [api-handler-mapping (make-api-handler-mapping)
+           aux-handler-mapping (make-aux-handler-mapping)]
+    (ys/->dep
+      (let [handler-mapping (merge api-handler-mapping
+                                   aux-handler-mapping)]
+        (-> (br/make-handler (make-route-mapping) handler-mapping)
+            (wrap-json-body {:keywords? true})
+            (m/wrap-json-response)
+            (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
+                       :access-control-allow-methods [:get :put :post :delete])
+            (m/wrap-exception-catching)
+            (m/wrap-logging))))))
 
 (defn make-Δ-config
   []
@@ -21,52 +61,15 @@
    (n/read-config
     (io/resource "config.edn"))))
 
-(defn make-Δ-route-mapping
+(defn make-Δ-metrics-registry
   []
   (yc/->component
-   ["/" {"api" {"/users" {:get :users
-                          :post :create-user}
-                "/articles" {:get :articles}}
-         "api-docs" {:get :api-docs}
-         true :not-found}]))
-
-(defn make-Δ-api-handler-mapping
-  []
-  (yc/->component
-   {:users (api/make-users-handler)
-    :create-user (api/make-create-user-handler)
-    :articles (api/make-articles-handler)}))
-
-(defn make-Δ-aux-handler-mapping
-  []
-  (c/mlet [api-handler-mapping (ys/ask :api-handler-mapping)
-           route-mapping (ys/ask :route-mapping)]
-    (ys/->dep
-     (yc/->component
-      {:api-docs (aux/make-api-docs-handler api-handler-mapping route-mapping)
-       :not-found (aux/make-not-found-handler)}))))
-
-(defn make-Δ-handler
-  []
-  (c/mlet [route-mapping (ys/ask :route-mapping)
-           api-handler-mapping (ys/ask :api-handler-mapping)
-           aux-handler-mapping (ys/ask :aux-handler-mapping)]
-    (ys/->dep
-     (let [handler-mapping (merge api-handler-mapping aux-handler-mapping)
-           handler (make-handler route-mapping handler-mapping)]
-       (yc/->component
-        (-> handler
-            (wrap-json-body {:keywords? true})
-            (m/wrap-json-response)
-            (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
-                       :access-control-allow-methods [:get :put :post :delete])
-            (m/wrap-exception-catching)
-            (m/wrap-logging)))))))
+   (new-registry)))
 
 (defn make-Δ-http-server
   []
   (c/mlet [http-server-port (ys/ask :config :http-server-port)
-           handler (ys/ask :handler)]
+           handler (make-handler)]
     (ys/->dep
      (let [stop-fn! (run-server handler {:port http-server-port :join? false})]
         (log/info "Starting HTTP server on port" http-server-port)
@@ -79,10 +82,7 @@
 (defn make-Δ-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
-                    (ys/named make-Δ-route-mapping :route-mapping)
-                    (ys/named make-Δ-api-handler-mapping :api-handler-mapping)
-                    (ys/named make-Δ-aux-handler-mapping :aux-handler-mapping)
-                    (ys/named make-Δ-handler :handler)
+                    (ys/named make-Δ-metrics-registry :metrics-registry)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (defn -main
