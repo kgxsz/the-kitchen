@@ -2,10 +2,11 @@
   (:require [bidi.bidi :as b]
             [metrics.meters :refer [rates]]
             [ring.swagger.swagger2 :as rs]
+            [clojure.tools.logging :as log]
             [schema.core :as sc]))
 
 (defn make-api-docs-handler
-  [api-handler-mapping route-mapping]
+  [route-mapping api-docs-mapping]
   (fn [_]
     {:status 200
      :body (sc/with-fn-validation
@@ -18,11 +19,11 @@
                 :paths (apply
                         merge-with
                         merge
-                        (for [[handler-key _] api-handler-mapping
+                        (for [[handler-key docs] api-docs-mapping
                               request-method [:get :post :put :delete :head :options]
                               :let [path (b/path-for route-mapping handler-key)]
                               :when (= handler-key (:handler (b/match-route route-mapping path :request-method request-method)))]
-                          {path {request-method (:docs (meta (handler-key api-handler-mapping)))}}))}))}))
+                          {path {request-method docs}}))}))}))
 
 (defn make-not-found-handler
   []

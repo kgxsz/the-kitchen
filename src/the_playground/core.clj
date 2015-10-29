@@ -18,14 +18,18 @@
             [metrics.meters :refer [meter]]
             [yoyo.system :as ys]))
 
-(defn make-route-mapping
-  []
+(def route-mapping
   ["/" {"api" {"/users" {:get :users
                          :post :create-user}
                "/articles" {:get :articles}}
         "api-docs" {:get :api-docs}
         "metrics" {:get :metrics}
         true :not-found}])
+
+(def api-docs-mapping
+  {:users api/users-docs
+   :create-user api/create-user-docs
+   :articles api/articles-docs})
 
 (defn make-api-handler-mapping
   []
@@ -37,10 +41,9 @@
 
 (defn make-aux-handler-mapping
   []
-  (c/mlet [metrics (ys/ask :metrics)
-           api-handler-mapping (make-api-handler-mapping)]
+  (c/mlet [metrics (ys/ask :metrics)]
     (ys/->dep
-     {:api-docs (aux/make-api-docs-handler api-handler-mapping (make-route-mapping))
+     {:api-docs (aux/make-api-docs-handler route-mapping api-docs-mapping)
       :metrics (aux/make-metrics-handler metrics)
       :not-found (aux/make-not-found-handler)})))
 
@@ -51,7 +54,7 @@
     (ys/->dep
       (let [handler-mapping (merge api-handler-mapping
                                    aux-handler-mapping)]
-        (-> (br/make-handler (make-route-mapping) handler-mapping)
+        (-> (br/make-handler route-mapping handler-mapping)
             (wrap-json-body {:keywords? true})
             (m/wrap-json-response)
             (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
