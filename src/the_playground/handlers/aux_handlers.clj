@@ -1,5 +1,6 @@
 (ns the-playground.handlers.aux-handlers
   (:require [bidi.bidi :as b]
+            [metrics.meters :refer [rates]]
             [ring.swagger.swagger2 :as rs]
             [schema.core :as sc]))
 
@@ -26,3 +27,9 @@
 (defn make-not-found-handler
   []
   (fn [_] {:status 404}))
+
+(defn make-metrics-handler
+  [metrics]
+  (fn [_]
+    {:status 200
+     :body (into {} (for [[k v] metrics] [k (rates v)]))}))

@@ -1,6 +1,7 @@
 (ns the-playground.handlers.api-handlers
   (:require [the-playground.middleware :as m]
             [the-playground.schema :as s]
+            [metrics.meters :refer [mark!]]
             [schema.core :as sc]))
 
 (defn make-users-handler
@@ -18,8 +19,9 @@
                                      :description "The list of users"}}})))
 
 (defn make-create-user-handler
-  []
+  [metrics]
   (-> (fn [{:keys [body request-method uri] :as req}]
+        (mark! (:user-created metrics))
         {:status 201
          :body (sc/validate s/CreateUserResponse
                             {:user {:id 456 :name (:name body)}})})

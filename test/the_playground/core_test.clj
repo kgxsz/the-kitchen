@@ -14,7 +14,7 @@
 (defn make-Δ-test-system
   []
   (ys/make-system #{(ys/named make-Δ-test-config :config)
-                    (ys/named make-Δ-metrics-registry :metrics-registry)
+                    (ys/named make-Δ-metrics :metrics)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (deftest end-to-end-test

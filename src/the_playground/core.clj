@@ -15,6 +15,7 @@
             [yoyo :as y]
             [yoyo.core :as yc]
             [metrics.core :refer [new-registry]]
+            [metrics.meters :refer [meter]]
             [yoyo.system :as ys]))
 
 (defn make-route-mapping
@@ -23,21 +24,24 @@
                          :post :create-user}
                "/articles" {:get :articles}}
         "api-docs" {:get :api-docs}
+        "metrics" {:get :metrics}
         true :not-found}])
 
 (defn make-api-handler-mapping
   []
-  (c/mlet [metrics-registry (ys/ask :metrics-registry)]
+  (c/mlet [metrics (ys/ask :metrics)]
     (ys/->dep
      {:users (api/make-users-handler)
-      :create-user (api/make-create-user-handler)
+      :create-user (api/make-create-user-handler metrics)
       :articles (api/make-articles-handler)})))
 
 (defn make-aux-handler-mapping
   []
-  (c/mlet [metrics-registry (ys/ask :metrics-registry)]
+  (c/mlet [metrics (ys/ask :metrics)
+           api-handler-mapping (make-api-handler-mapping)]
     (ys/->dep
-     {:api-docs (aux/make-api-docs-handler (make-api-handler-mapping) (make-route-mapping))
+     {:api-docs (aux/make-api-docs-handler api-handler-mapping (make-route-mapping))
+      :metrics (aux/make-metrics-handler metrics)
       :not-found (aux/make-not-found-handler)})))
 
 (defn make-handler
@@ -61,10 +65,11 @@
    (n/read-config
     (io/resource "config.edn"))))
 
-(defn make-Δ-metrics-registry
+(defn make-Δ-metrics
   []
-  (yc/->component
-   (new-registry)))
+  (let [registry (new-registry)]
+    (yc/->component
+     {:user-created (meter registry "user-created")})))
 
 (defn make-Δ-http-server
   []
@@ -82,7 +87,7 @@
 (defn make-Δ-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
-                    (ys/named make-Δ-metrics-registry :metrics-registry)
+                    (ys/named make-Δ-metrics :metrics)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (defn -main
