@@ -6,16 +6,20 @@
             [schema.core :as sc]
             [slingshot.slingshot :refer [try+]]))
 
-(defn wrap-validate-request
-  [handler request-schema]
+(defn wrap-validate
+  [handler {:keys [request-schema response-schemata]}]
   (fn [{:keys [body request-method uri] :as request}]
+
     (try+
-     (sc/validate s/CreateUserRequest body)
-     (handler request)
+     (when request-schema (sc/validate request-schema body))
      (catch [:type :schema.core/error] {:keys [error]}
        (log/debug "Invalid" (format-request-method request-method)  "request to" uri "-" error)
        {:status 400
-        :body error}))))
+        :body error}))
+
+    (let [{:keys [status body] :as response} (handler request)]
+      (sc/validate (get response-schemata status) body)
+      response)))
 
 (defn wrap-json-response
   [handler]

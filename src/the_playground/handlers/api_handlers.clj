@@ -8,9 +8,10 @@
   []
   (-> (fn [req]
         {:status 200
-         :body (sc/validate s/UsersResponse
-                            {:users [{:id 123, :name "Bob"}
-                                     {:id 321, :name "Jane"}]})})
+         :body {:users [{:id 123 :name "Bob"}
+                        {:id 321 :name "Jane"}]}})
+
+      (m/wrap-validate {:response-schemata {200 s/UsersResponse}})
 
       (m/wrap-docs {:summary "Gets a list of users"
                     :description "Lists all the users"
@@ -23,10 +24,10 @@
   (-> (fn [{:keys [body request-method uri] :as req}]
         (mark! (:user-created metrics))
         {:status 201
-         :body (sc/validate s/CreateUserResponse
-                            {:user {:id 456 :name (:name body)}})})
+         :body {:user {:id 456 :name (:name body)}}})
 
-      (m/wrap-validate-request s/CreateUserRequest)
+      (m/wrap-validate {:request-schema s/CreateUserRequest
+                        :response-schemata {201 s/CreateUserResponse}})
 
       (m/wrap-docs {:summary "Creates a user"
                     :description "Creates a user"
@@ -39,9 +40,10 @@
   []
   (-> (fn [req]
         {:status 200
-         :body (sc/validate s/ArticlesResponse
-                            {:articles [{:id 176, :title "Things I like", :text "I like cheese and bread."}
-                                        {:id 346, :title "Superconductivity", :text "It's really hard to understand."}]})})
+         :body {:articles [{:id 176 :title "Things I like" :text "I like cheese and bread."}
+                           {:id 346 :title "Superconductivity" :text "It's really hard to understand."}]}})
+
+      (m/wrap-validate {:response-schemata {200 s/ArticlesResponse}})
 
       (m/wrap-docs {:summary "Gets a list of articles"
                     :description "Lists all the articles"

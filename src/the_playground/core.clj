@@ -37,10 +37,9 @@
 
 (defn make-aux-handler-mapping
   []
-  (c/mlet [metrics (ys/ask :metrics)
-           api-handler-mapping (make-api-handler-mapping)]
+  (c/mlet [metrics (ys/ask :metrics)]
     (ys/->dep
-     {:api-docs (aux/make-api-docs-handler api-handler-mapping (make-route-mapping))
+     {:api-docs (aux/make-api-docs-handler (make-api-handler-mapping) (make-route-mapping))
       :metrics (aux/make-metrics-handler metrics)
       :not-found (aux/make-not-found-handler)})))
 
