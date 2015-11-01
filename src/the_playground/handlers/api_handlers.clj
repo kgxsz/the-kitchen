@@ -1,6 +1,7 @@
 (ns the-playground.handlers.api-handlers
   (:require [the-playground.middleware :as m]
             [the-playground.schema :as s]
+            [clojure.string :refer [lower-case]]
             [schema.core :as sc]))
 
 (defn make-users-handler
@@ -20,20 +21,26 @@
 (defn make-create-user-handler
   [db]
   (-> (fn [{:keys [body request-method uri] :as req}]
-        {:status 201
-         :body (let [new-user {:id (+ 100 (rand-int 100)) :name (:name body)}]
-                 (swap! db update :users conj new-user)
-                 {:user new-user})})
+        (let [new-user {:id (+ 100 (rand-int 100)) :name (:name body)}]
+          (if (some #(= (lower-case (:name %)) (lower-case (:name new-user))) (:users @db))
+            {:status 409
+             :body {:error "User already exists"}}
+            {:status 201
+             :body (do (swap! db update :users conj new-user)
+                       {:user new-user})})))
 
       (m/wrap-validate {:request-schema s/CreateUserRequest
-                        :response-schemata {201 s/CreateUserResponse}})
+                        :response-schemata {201 s/CreateUserResponse
+                                            409 s/ErrorResponse}})
 
       (m/wrap-docs {:summary "Creates a user"
                     :description "Creates a user"
                     :tags ["Users"]
                     :parameters {:body s/CreateUserRequest}
                     :responses {201 {:schema s/CreateUserResponse
-                                     :description "The created user"}}})))
+                                     :description "The created user"}
+                                409 {:schema s/ErrorResponse
+                                     :description "The error response"}}})))
 
 (defn make-articles-handler
   [db]

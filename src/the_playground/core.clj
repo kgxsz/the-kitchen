@@ -66,9 +66,9 @@
 
 (defn make-Δ-config
   []
-  (yc/->component
-   (n/read-config
-    (io/resource "config.edn"))))
+  (let [config (n/read-config (io/resource "config.edn"))]
+    (log/info "Reading config")
+    (yc/->component config)))
 
 (defn make-Δ-metrics
   []
@@ -76,6 +76,7 @@
            api-handler-mapping (make-api-handler-mapping)]
     (ys/->dep
      (let [registry (new-registry)]
+       (log/info "Initialising metrics")
        (yc/->component
         {:db-gauges {:number-of-users (gauge-fn "number-of-users" #(count (:users @db)))
                      :number-of-articles (gauge-fn "number-of-articles" #(count (:articles @db)))}
@@ -96,7 +97,7 @@
                   :articles [{:id 176 :title "Things I like" :text "I like cheese and bread."}
                              {:id 146 :title "Superconductivity" :text "It's really hard to understand."}]})]
     (log/info "Initialising db")
-    (yc/->component db (fn [] (log/info "Terminating db state with:" @db)))))
+    (yc/->component db)))
 
 (defn make-Δ-http-server
   []

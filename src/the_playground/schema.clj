@@ -16,3 +16,4 @@
 
 (s/defschema ArticlesResponse {:articles [Article]})
 
+(s/defschema ErrorResponse {:error s/Str})

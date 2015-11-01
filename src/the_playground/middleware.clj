@@ -39,7 +39,7 @@
      (catch [:type :schema.core/error :schema request-schema] {:keys [error]}
        (log/debug "Validation failed for incoming" (format-request-method request-method)  "request to" uri "-" error)
        {:status 400
-        :body error}))))
+        :body {:error error}}))))
 
 (defn wrap-json-response
   [handler]
