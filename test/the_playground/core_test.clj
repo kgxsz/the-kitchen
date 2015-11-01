@@ -15,6 +15,7 @@
   []
   (ys/make-system #{(ys/named make-Δ-test-config :config)
                     (ys/named make-Δ-metrics :metrics)
+                    (ys/named make-Δ-db :db)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (deftest end-to-end-test
@@ -35,7 +36,7 @@
 
           (is (= 2 (-> users-res-initial :body (parse-string true) :users count)))
           (is (= 201 (:status create-user-res)))
-          (is (= 2 (-> users-res-final :body (parse-string true) :users count)))))
+          (is (= 3 (-> users-res-final :body (parse-string true) :users count)))))
 
       (testing "A The list of articles can be explored"
         (let [articless-res @(http/get "http://localhost:8084/api/articles")]

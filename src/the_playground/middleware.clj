@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [metrics.meters :refer [mark!]]
             [metrics.timers :refer [time!]]
+            [metrics.counters :refer [inc! dec!]]
             [schema.core :as sc]
             [slingshot.slingshot :refer [try+]]))
 
@@ -17,28 +18,28 @@
       (if handler-metrics
         (time! (:request-processing-time handler-metrics)
           (mark! (:request-rate handler-metrics))
-          (handler request))
-        (handler request))))
-
-  #_(fn [request]
-    (time! (timer metrics)
-     (mark! (meter metrics))
-     (handler request))))
+          (inc! (:open-requests handler-metrics))
+          (let [{:keys [status] :as response} (handler request)]
+            (dec! (:open-requests handler-metrics))
+            (cond
+              (>= status 500) (mark! (:5xx-response-rate handler-metrics))
+              (>= status 400) (mark! (:4xx-response-rate handler-metrics))
+              :else (mark! (:2xx-response-rate handler-metrics)))
+            response))
+        (handler request)))))
 
 (defn wrap-validate
   [handler {:keys [request-schema response-schemata]}]
   (fn [{:keys [body request-method uri] :as request}]
-
     (try+
      (when request-schema (sc/validate request-schema body))
-     (catch [:type :schema.core/error] {:keys [error]}
-       (log/debug "Invalid" (format-request-method request-method)  "request to" uri "-" error)
+     (let [{:keys [status body] :as response} (handler request)]
+       (sc/validate (get response-schemata status) body)
+       response)
+     (catch [:type :schema.core/error :schema request-schema] {:keys [error]}
+       (log/debug "Validation failed for incoming" (format-request-method request-method)  "request to" uri "-" error)
        {:status 400
-        :body error}))
-
-    (let [{:keys [status body] :as response} (handler request)]
-      (sc/validate (get response-schemata status) body)
-      response)))
+        :body error}))))
 
 (defn wrap-json-response
   [handler]

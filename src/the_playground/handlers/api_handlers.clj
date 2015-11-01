@@ -4,11 +4,10 @@
             [schema.core :as sc]))
 
 (defn make-users-handler
-  []
+  [db]
   (-> (fn [req]
         {:status 200
-         :body {:users [{:id 123 :name "Bob"}
-                        {:id 321 :name "Jane"}]}})
+         :body {:users (:users @db)}})
 
       (m/wrap-validate {:response-schemata {200 s/UsersResponse}})
 
@@ -19,11 +18,12 @@
                                      :description "The list of users"}}})))
 
 (defn make-create-user-handler
-  []
+  [db]
   (-> (fn [{:keys [body request-method uri] :as req}]
-        @(future (Thread/sleep 1000) 1)
         {:status 201
-         :body {:user {:id 456 :name (:name body)}}})
+         :body (let [new-user {:id (+ 100 (rand-int 100)) :name (:name body)}]
+                 (swap! db update :users conj new-user)
+                 {:user new-user})})
 
       (m/wrap-validate {:request-schema s/CreateUserRequest
                         :response-schemata {201 s/CreateUserResponse}})
@@ -36,11 +36,10 @@
                                      :description "The created user"}}})))
 
 (defn make-articles-handler
-  []
+  [db]
   (-> (fn [req]
         {:status 200
-         :body {:articles [{:id 176 :title "Things I like" :text "I like cheese and bread."}
-                           {:id 346 :title "Superconductivity" :text "It's really hard to understand."}]}})
+         :body {:articles (:articles @db)}})
 
       (m/wrap-validate {:response-schemata {200 s/ArticlesResponse}})
 

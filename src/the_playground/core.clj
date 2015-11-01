@@ -17,6 +17,7 @@
             [metrics.core :refer [new-registry]]
             [metrics.meters :refer [meter]]
             [metrics.timers :refer [timer]]
+            [metrics.counters :refer [counter]]
             [yoyo.system :as ys]))
 
 (defn make-route-mapping
@@ -30,24 +31,28 @@
 
 (defn make-api-handler-mapping
   []
-  {:users (api/make-users-handler)
-   :create-user (api/make-create-user-handler)
-   :articles (api/make-articles-handler)})
+  (c/mlet [db (ys/ask :db)]
+    (ys/->dep
+     {:users (api/make-users-handler db)
+      :create-user (api/make-create-user-handler db)
+      :articles (api/make-articles-handler db)})))
 
 (defn make-aux-handler-mapping
   []
-  (c/mlet [metrics (ys/ask :metrics)]
+  (c/mlet [metrics (ys/ask :metrics)
+           api-handler-mapping (make-api-handler-mapping)]
     (ys/->dep
-     {:api-docs (aux/make-api-docs-handler (make-api-handler-mapping) (make-route-mapping))
-      :metrics (aux/make-metrics-handler metrics)
+     {:api-docs (aux/make-api-docs-handler api-handler-mapping (make-route-mapping))
+      :metrics (aux/make-metrics-handler api-handler-mapping metrics)
       :not-found (aux/make-not-found-handler)})))
 
 (defn make-handler
   []
   (c/mlet [metrics (ys/ask :metrics)
+           api-handler-mapping (make-api-handler-mapping)
            aux-handler-mapping (make-aux-handler-mapping)]
     (ys/->dep
-     (let [handler-mapping (merge (make-api-handler-mapping)
+     (let [handler-mapping (merge api-handler-mapping
                                   aux-handler-mapping)]
         (-> (br/make-handler (make-route-mapping) handler-mapping)
             (wrap-json-body {:keywords? true})
@@ -66,22 +71,30 @@
 
 (defn make-Δ-metrics
   []
-  (let [registry (new-registry)]
-    (yc/->component
-     {:users {:request-processing-time (timer registry "users-request-processing-time")
-              :request-rate (meter registry "users-request-rate")}
-      :create-user {:request-processing-time (timer registry "create-user-request-processing-time")
-                    :request-rate (meter registry "create-user-request-rate")}
-      :articles {:request-processing-time (timer registry "articles-request-processing-time")
-                 :request-rate (meter registry "articles-request-rate")}})))
+  (c/mlet [api-handler-mapping (make-api-handler-mapping)]
+    (ys/->dep
+     (let [registry (new-registry)]
+       (yc/->component
+        (into {}
+              (for [handler-key (keys api-handler-mapping)
+                    :let [handler-name (name handler-key)]]
+                [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
+                              :request-rate (meter registry (str handler-name "-request-rate"))
+                              :2xx-response-rate (meter registry (str handler-name "-2xx-response-rate"))
+                              :4xx-response-rate (meter registry (str handler-name "-4xx-response-rate"))
+                              :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate"))
+                              :open-requests (counter registry (str handler-name "-open-requests"))}])))))))
 
 (defn make-Δ-db
   []
-  (let [db (atom {})]
-    (log/info "Starting db")
+  (let [db (atom {:users [{:id 154 :name "Jane"}
+                          {:id 137 :name "Henry"}]
+                  :articles [{:id 176 :title "Things I like" :text "I like cheese and bread."}
+                             {:id 146 :title "Superconductivity" :text "It's really hard to understand."}]})]
+    (log/info "Initialising db")
     (yc/->component
      db
-     (fn [] (log/info "Stopping db:" @db)))))
+     (fn [] (log/info "Terminating db state with:" @db)))))
 
 (defn make-Δ-http-server
   []

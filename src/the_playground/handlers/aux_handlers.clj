@@ -2,6 +2,7 @@
   (:require [bidi.bidi :as b]
             [metrics.meters :refer [rates]]
             [metrics.timers :refer [percentiles]]
+            [metrics.counters :refer [value]]
             [ring.swagger.swagger2 :as rs]
             [schema.core :as sc]))
 
@@ -30,12 +31,14 @@
   (fn [_] {:status 404}))
 
 (defn make-metrics-handler
-  [metrics]
+  [api-handler-mapping metrics]
   (fn [_]
     {:status 200
-     :body {:users {:request-processing-time (percentiles (get-in metrics [:users :request-processing-time]))
-                    :request-rate (rates (get-in metrics [:users :request-rate]))}
-            :create-user {:request-processing-time (percentiles (get-in metrics [:create-user :request-processing-time]))
-                          :request-rate (rates (get-in metrics [:create-user :request-rate]))}
-            :articles {:request-processing-time (percentiles (get-in metrics [:articles :request-processing-time]))
-                       :request-rate (rates (get-in metrics [:articles :request-rate]))}}}))
+     :body (into {}
+             (for [handler-key (keys api-handler-mapping)]
+               [handler-key {:request-processing-time (percentiles (get-in metrics [handler-key :request-processing-time]))
+                             :request-rate (rates (get-in metrics [handler-key :request-rate]))
+                             :2xx-response-rate (rates (get-in metrics [handler-key :2xx-response-rate]))
+                             :4xx-response-rate (rates (get-in metrics [handler-key :4xx-response-rate]))
+                             :5xx-response-rate (rates (get-in metrics [handler-key :5xx-response-rate]))
+                             :open-requests (value (get-in metrics [handler-key :open-requests]))}]))}))
