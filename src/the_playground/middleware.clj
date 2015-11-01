@@ -1,10 +1,29 @@
 (ns the-playground.middleware
   (:require [the-playground.schema :as s]
             [the-playground.util :refer [format-request-method]]
+            [bidi.bidi :as b]
             [cheshire.core :refer [generate-string]]
             [clojure.tools.logging :as log]
+            [metrics.meters :refer [mark!]]
+            [metrics.timers :refer [time!]]
             [schema.core :as sc]
             [slingshot.slingshot :refer [try+]]))
+
+(defn wrap-instrument
+  [handler metrics route-mapping]
+  (fn [{:keys [uri request-method] :as request}]
+    (let [handler-key (:handler (b/match-route route-mapping uri :request-method request-method))
+          handler-metrics (handler-key metrics)]
+      (if handler-metrics
+        (time! (:request-processing-time handler-metrics)
+          (mark! (:request-rate handler-metrics))
+          (handler request))
+        (handler request))))
+
+  #_(fn [request]
+    (time! (timer metrics)
+     (mark! (meter metrics))
+     (handler request))))
 
 (defn wrap-validate
   [handler {:keys [request-schema response-schemata]}]

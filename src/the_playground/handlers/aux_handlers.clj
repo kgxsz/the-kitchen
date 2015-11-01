@@ -1,6 +1,7 @@
 (ns the-playground.handlers.aux-handlers
   (:require [bidi.bidi :as b]
             [metrics.meters :refer [rates]]
+            [metrics.timers :refer [percentiles]]
             [ring.swagger.swagger2 :as rs]
             [schema.core :as sc]))
 
@@ -32,4 +33,9 @@
   [metrics]
   (fn [_]
     {:status 200
-     :body (into {} (for [[k v] metrics] [k (rates v)]))}))
+     :body {:users {:request-processing-time (percentiles (get-in metrics [:users :request-processing-time]))
+                    :request-rate (rates (get-in metrics [:users :request-rate]))}
+            :create-user {:request-processing-time (percentiles (get-in metrics [:create-user :request-processing-time]))
+                          :request-rate (rates (get-in metrics [:create-user :request-rate]))}
+            :articles {:request-processing-time (percentiles (get-in metrics [:articles :request-processing-time]))
+                       :request-rate (rates (get-in metrics [:articles :request-rate]))}}}))

@@ -16,6 +16,7 @@
             [yoyo.core :as yc]
             [metrics.core :refer [new-registry]]
             [metrics.meters :refer [meter]]
+            [metrics.timers :refer [timer]]
             [yoyo.system :as ys]))
 
 (defn make-route-mapping
@@ -29,11 +30,9 @@
 
 (defn make-api-handler-mapping
   []
-  (c/mlet [metrics (ys/ask :metrics)]
-    (ys/->dep
-     {:users (api/make-users-handler)
-      :create-user (api/make-create-user-handler metrics)
-      :articles (api/make-articles-handler)})))
+  {:users (api/make-users-handler)
+   :create-user (api/make-create-user-handler)
+   :articles (api/make-articles-handler)})
 
 (defn make-aux-handler-mapping
   []
@@ -45,18 +44,19 @@
 
 (defn make-handler
   []
-  (c/mlet [api-handler-mapping (make-api-handler-mapping)
+  (c/mlet [metrics (ys/ask :metrics)
            aux-handler-mapping (make-aux-handler-mapping)]
     (ys/->dep
-      (let [handler-mapping (merge api-handler-mapping
-                                   aux-handler-mapping)]
+     (let [handler-mapping (merge (make-api-handler-mapping)
+                                  aux-handler-mapping)]
         (-> (br/make-handler (make-route-mapping) handler-mapping)
             (wrap-json-body {:keywords? true})
             (m/wrap-json-response)
             (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
                        :access-control-allow-methods [:get :put :post :delete])
             (m/wrap-exception-catching)
-            (m/wrap-logging))))))
+            (m/wrap-logging)
+            (m/wrap-instrument metrics (make-route-mapping)))))))
 
 (defn make-Δ-config
   []
@@ -68,7 +68,20 @@
   []
   (let [registry (new-registry)]
     (yc/->component
-     {:user-created (meter registry "user-created")})))
+     {:users {:request-processing-time (timer registry "users-request-processing-time")
+              :request-rate (meter registry "users-request-rate")}
+      :create-user {:request-processing-time (timer registry "create-user-request-processing-time")
+                    :request-rate (meter registry "create-user-request-rate")}
+      :articles {:request-processing-time (timer registry "articles-request-processing-time")
+                 :request-rate (meter registry "articles-request-rate")}})))
+
+(defn make-Δ-db
+  []
+  (let [db (atom {})]
+    (log/info "Starting db")
+    (yc/->component
+     db
+     (fn [] (log/info "Stopping db:" @db)))))
 
 (defn make-Δ-http-server
   []
@@ -87,6 +100,7 @@
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
                     (ys/named make-Δ-metrics :metrics)
+                    (ys/named make-Δ-db :db)
                     (ys/named make-Δ-http-server :http-server)}))
 
 (defn -main

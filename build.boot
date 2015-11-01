@@ -44,7 +44,6 @@
   []
   (comp (watch) (speak) (test)))
 
-
 (deftask dev
   "Start a development environment."
   []
