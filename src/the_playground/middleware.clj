@@ -14,7 +14,7 @@
   [handler metrics route-mapping]
   (fn [{:keys [uri request-method] :as request}]
     (let [handler-key (:handler (b/match-route route-mapping uri :request-method request-method))
-          handler-metrics (handler-key metrics)]
+          handler-metrics (get-in metrics [:api-handlers handler-key])]
       (if handler-metrics
         (time! (:request-processing-time handler-metrics)
           (mark! (:request-rate handler-metrics))

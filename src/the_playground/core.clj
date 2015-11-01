@@ -18,6 +18,7 @@
             [metrics.meters :refer [meter]]
             [metrics.timers :refer [timer]]
             [metrics.counters :refer [counter]]
+            [metrics.gauges :refer [gauge-fn]]
             [yoyo.system :as ys]))
 
 (defn make-route-mapping
@@ -71,19 +72,22 @@
 
 (defn make-Δ-metrics
   []
-  (c/mlet [api-handler-mapping (make-api-handler-mapping)]
+  (c/mlet [db (ys/ask :db)
+           api-handler-mapping (make-api-handler-mapping)]
     (ys/->dep
      (let [registry (new-registry)]
        (yc/->component
-        (into {}
-              (for [handler-key (keys api-handler-mapping)
-                    :let [handler-name (name handler-key)]]
-                [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
-                              :request-rate (meter registry (str handler-name "-request-rate"))
-                              :2xx-response-rate (meter registry (str handler-name "-2xx-response-rate"))
-                              :4xx-response-rate (meter registry (str handler-name "-4xx-response-rate"))
-                              :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate"))
-                              :open-requests (counter registry (str handler-name "-open-requests"))}])))))))
+        {:db-gauges {:number-of-users (gauge-fn "number-of-users" #(count (:users @db)))
+                     :number-of-articles (gauge-fn "number-of-articles" #(count (:articles @db)))}
+         :api-handlers (into {}
+                         (for [handler-key (keys api-handler-mapping)
+                               :let [handler-name (name handler-key)]]
+                           [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
+                                         :request-rate (meter registry (str handler-name "-request-rate"))
+                                         :2xx-response-rate (meter registry (str handler-name "-2xx-response-rate"))
+                                         :4xx-response-rate (meter registry (str handler-name "-4xx-response-rate"))
+                                         :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate"))
+                                         :open-requests (counter registry (str handler-name "-open-requests"))}]))})))))
 
 (defn make-Δ-db
   []
@@ -92,9 +96,7 @@
                   :articles [{:id 176 :title "Things I like" :text "I like cheese and bread."}
                              {:id 146 :title "Superconductivity" :text "It's really hard to understand."}]})]
     (log/info "Initialising db")
-    (yc/->component
-     db
-     (fn [] (log/info "Terminating db state with:" @db)))))
+    (yc/->component db (fn [] (log/info "Terminating db state with:" @db)))))
 
 (defn make-Δ-http-server
   []

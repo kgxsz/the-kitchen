@@ -48,4 +48,3 @@
                     :tags ["Articles"]
                     :responses {200 {:schema s/ArticlesResponse
                                      :description "The list of articles"}}})))
-

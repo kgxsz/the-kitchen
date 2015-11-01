@@ -2,7 +2,8 @@
   (:require [bidi.bidi :as b]
             [metrics.meters :refer [rates]]
             [metrics.timers :refer [percentiles]]
-            [metrics.counters :refer [value]]
+            [metrics.counters :as c]
+            [metrics.gauges :as g]
             [ring.swagger.swagger2 :as rs]
             [schema.core :as sc]))
 
@@ -34,11 +35,13 @@
   [api-handler-mapping metrics]
   (fn [_]
     {:status 200
-     :body (into {}
-             (for [handler-key (keys api-handler-mapping)]
-               [handler-key {:request-processing-time (percentiles (get-in metrics [handler-key :request-processing-time]))
-                             :request-rate (rates (get-in metrics [handler-key :request-rate]))
-                             :2xx-response-rate (rates (get-in metrics [handler-key :2xx-response-rate]))
-                             :4xx-response-rate (rates (get-in metrics [handler-key :4xx-response-rate]))
-                             :5xx-response-rate (rates (get-in metrics [handler-key :5xx-response-rate]))
-                             :open-requests (value (get-in metrics [handler-key :open-requests]))}]))}))
+     :body {:db-gauges {:number-of-users (g/value (get-in metrics [:db-gauges :number-of-users]))
+                        :number-of-articles (g/value (get-in metrics [:db-gauges :number-of-articles]))}
+            :api-handlers (into {}
+                            (for [handler-key (keys api-handler-mapping)]
+                              [handler-key {:request-processing-time (percentiles (get-in metrics [:api-handlers handler-key :request-processing-time]))
+                                            :request-rate (rates (get-in metrics [:api-handlers handler-key :request-rate]))
+                                            :2xx-response-rate (rates (get-in metrics [:api-handlers handler-key :2xx-response-rate]))
+                                            :4xx-response-rate (rates (get-in metrics [:api-handlers handler-key :4xx-response-rate]))
+                                            :5xx-response-rate (rates (get-in metrics [:api-handlers handler-key :5xx-response-rate]))
+                                            :open-requests (c/value (get-in metrics [:api-handlers handler-key :open-requests]))}]))}}))
