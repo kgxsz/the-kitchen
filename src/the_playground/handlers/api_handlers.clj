@@ -2,6 +2,7 @@
   (:require [the-playground.middleware :as m]
             [the-playground.schema :as s]
             [clojure.string :refer [lower-case]]
+            [slingshot.slingshot :refer [try+ throw+]]
             [schema.core :as sc]))
 
 (defn make-users-handler
@@ -21,13 +22,20 @@
 (defn make-create-user-handler
   [db]
   (-> (fn [{:keys [body request-method uri] :as req}]
-        (let [new-user {:id (+ 100 (rand-int 100)) :name (:name body)}]
-          (if (some #(= (lower-case (:name %)) (lower-case (:name new-user))) (:users @db))
-            {:status 409
-             :body {:error "User already exists"}}
+        (try+
+          (let [new-user {:id (+ 100 (rand-int 100)) :name (:name body)}]
+
+            (when (some #(= (lower-case (:name %)) (lower-case (:name new-user))) (:users @db))
+              (throw+ {:type :user-already-exists}))
+
+            (swap! db update :users conj new-user)
+
             {:status 201
-             :body (do (swap! db update :users conj new-user)
-                       {:user new-user})})))
+             :body {:user new-user}})
+
+          (catch [:type :user-already-exists] e
+            {:status 409
+             :body {:error "User already exists"}})))
 
       (m/wrap-validate {:request-schema s/CreateUserRequest
                         :response-schemata {201 s/CreateUserResponse
