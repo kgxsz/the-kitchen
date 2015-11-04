@@ -1,4 +1,5 @@
-{:http-server-port 8080
- :nomad/environments {"test" {}
-                      "staging" {}
-                      "production" {:http-server-port #nomad/edn-env-var ["PORT" 8080]}}}
+{:nomad/includes [#nomad/file "~/.nomad/the-playground.edn"]
+ :http-server-port #nomad/edn-env-var ["PORT" "8080"]
+ :password #nomad/edn-env-var ["PASSWORD"]}
+
+
