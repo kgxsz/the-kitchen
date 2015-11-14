@@ -21,6 +21,7 @@
             [metrics.gauges :refer [gauge-fn]]
             [yoyo.system :as ys]))
 
+
 (defn make-route-mapping
   []
   ["/" {"api" {"/users" {:get :users
@@ -30,6 +31,7 @@
         "metrics" {:get :metrics}
         true :not-found}])
 
+
 (defn make-api-handler-mapping
   []
   (c/mlet [db (ys/ask :db)]
@@ -37,6 +39,7 @@
      {:users (api/make-users-handler db)
       :create-user (api/make-create-user-handler db)
       :articles (api/make-articles-handler db)})))
+
 
 (defn make-aux-handler-mapping
   []
@@ -47,28 +50,42 @@
       :metrics (aux/make-metrics-handler api-handler-mapping metrics)
       :not-found (aux/make-not-found-handler)})))
 
-(defn make-handler
+
+(defn make-wrap-middleware
   []
-  (c/mlet [metrics (ys/ask :metrics)
-           api-handler-mapping (make-api-handler-mapping)
-           aux-handler-mapping (make-aux-handler-mapping)]
+  (c/mlet [metrics (ys/ask :metrics)]
     (ys/->dep
-     (let [handler-mapping (merge api-handler-mapping
-                                  aux-handler-mapping)]
-        (-> (br/make-handler (make-route-mapping) handler-mapping)
+      (fn [handler]
+        (-> handler
             (wrap-json-body {:keywords? true})
             (m/wrap-json-response)
             (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
                        :access-control-allow-methods [:get :put :post :delete])
+            (m/wrap-instrument metrics)
             (m/wrap-exception-catching)
             (m/wrap-logging)
-            (m/wrap-instrument metrics (make-route-mapping)))))))
+            (m/wrap-handler-key (make-route-mapping)))))))
+
+
+(defn make-handler
+  []
+  (c/mlet [wrap-middleware (make-wrap-middleware)
+           api-handler-mapping (make-api-handler-mapping)
+           aux-handler-mapping (make-aux-handler-mapping)]
+    (ys/->dep
+     (wrap-middleware
+      (br/make-handler
+       (make-route-mapping)
+       (merge api-handler-mapping
+              aux-handler-mapping))))))
+
 
 (defn make-Δ-config
   []
   (let [config (n/read-config (io/resource "config.edn"))]
     (log/info "Reading config")
     (yc/->component config)))
+
 
 (defn make-Δ-metrics
   []
@@ -90,6 +107,7 @@
                                          :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate"))
                                          :open-requests (counter registry (str handler-name "-open-requests"))}]))})))))
 
+
 (defn make-Δ-db
   []
   (let [db (atom {:users [{:id 154 :name "Jane"}
@@ -98,6 +116,7 @@
                              {:id 146 :title "Superconductivity" :text "It's really hard to understand."}]})]
     (log/info "Initialising db")
     (yc/->component db)))
+
 
 (defn make-Δ-http-server
   []
@@ -112,12 +131,14 @@
             (log/info "Stopping HTTP server")
             (stop-fn! :timeout 500)))))))
 
+
 (defn make-Δ-system
   []
   (ys/make-system #{(ys/named make-Δ-config :config)
                     (ys/named make-Δ-metrics :metrics)
                     (ys/named make-Δ-db :db)
                     (ys/named make-Δ-http-server :http-server)}))
+
 
 (defn -main
   []
