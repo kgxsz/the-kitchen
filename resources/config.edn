@@ -1,5 +1,3 @@
-{:nomad/includes [#nomad/file "~/.nomad/the-playground.edn"]
+{:nomad/includes [#nomad/file "~/.nomad/the-playground-secrets.edn"]
  :http-server-port #nomad/edn-env-var ["PORT" "8080"]
  :password #nomad/edn-env-var ["PASSWORD"]}
-
-
