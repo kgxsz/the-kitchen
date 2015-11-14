@@ -19,6 +19,7 @@
                     :responses {200 {:schema s/UsersResponse
                                      :description "The list of users"}}})))
 
+
 (defn make-create-user-handler
   [db]
   (-> (fn [{:keys [body request-method uri] :as req}]
@@ -49,6 +50,7 @@
                                      :description "The created user"}
                                 409 {:schema s/ErrorResponse
                                      :description "The error response"}}})))
+
 
 (defn make-articles-handler
   [db]

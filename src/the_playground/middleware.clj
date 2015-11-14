@@ -12,26 +12,43 @@
             [slingshot.slingshot :refer [try+]]))
 
 
-(defn wrap-instrument
+(defn wrap-instrument-rates
   [handler metrics]
 
-  (fn [{:keys [uri request-method handler-key] :as request}]
-    (let [handler-metrics (get-in metrics [:api-handlers handler-key])]
+  (fn [{:keys [handler-key] :as request}]
+    (if-let [handler-metrics (get-in metrics [:api-handlers handler-key])]
 
-      (if handler-metrics
-
-        (time! (:request-processing-time handler-metrics)
-          (mark! (:request-rate handler-metrics))
-          (inc! (:open-requests handler-metrics))
+      (do (mark! (:request-rate handler-metrics))
           (let [{:keys [status] :as response} (handler request)]
-            (dec! (:open-requests handler-metrics))
             (cond
               (>= status 500) (mark! (:5xx-response-rate handler-metrics))
               (>= status 400) (mark! (:4xx-response-rate handler-metrics))
               :else (mark! (:2xx-response-rate handler-metrics)))
             response))
 
-        (handler request)))))
+      (handler request))))
+
+
+(defn wrap-instrument-open-requests
+  [handler metrics]
+
+  (fn [{:keys [handler-key] :as request}]
+    (if-let [handler-metrics (get-in metrics [:api-handlers handler-key])]
+
+      (do (inc! (:open-requests handler-metrics))
+          (let [response (handler request)]
+            (dec! (:open-requests handler-metrics))
+            response))
+
+      (handler request))))
+
+
+(defn wrap-instrument-timer
+  [handler metrics]
+  (fn [{:keys [handler-key] :as request}]
+    (if-let [handler-metrics (get-in metrics [:api-handlers handler-key])]
+      (time! (:request-processing-time handler-metrics) (handler request))
+      (handler request))))
 
 
 (defn wrap-handler-key
@@ -45,8 +62,8 @@
 
 (defn wrap-validate
   "Ensures the the request and response satisfy their schema.
-   Return a 400 response for unsatisfied request schema.
-   For unsatisfied response schema, throw an exception up.
+   Return a 400 response for an unsatisfied request schema.
+   Throws an exception up for an unsatisfied response schema.
    Don't use this at the top level, only as local handler middleware."
   [handler {:keys [request-schema response-schemata]}]
 
@@ -54,6 +71,7 @@
     (try+
 
      (when request-schema (sc/validate request-schema body))
+
      (let [{:keys [status body] :as response} (handler request)]
        (sc/validate (get response-schemata status) body)
        response)
@@ -100,5 +118,5 @@
     (try+
      (handler request)
      (catch Exception e
-       (log/error  "Unhandled exception -" (ex-data e))
+       (log/error  "Unhandled exception -" e)
        {:status 500}))))

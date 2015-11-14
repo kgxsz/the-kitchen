@@ -27,6 +27,7 @@
                               :when (= handler-key (:handler (b/match-route route-mapping path :request-method request-method)))]
                           {path {request-method (:docs (meta (handler-key api-handler-mapping)))}}))}))}))
 
+
 (defn make-not-found-handler
   []
   (fn [_] {:status 404}))

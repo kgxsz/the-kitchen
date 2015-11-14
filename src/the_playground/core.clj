@@ -22,8 +22,7 @@
             [yoyo.system :as ys]))
 
 
-(defn make-route-mapping
-  []
+(def route-mapping
   ["/" {"api" {"/users" {:get :users
                          :post :create-user}
                "/articles" {:get :articles}}
@@ -46,7 +45,7 @@
   (c/mlet [metrics (ys/ask :metrics)
            api-handler-mapping (make-api-handler-mapping)]
     (ys/->dep
-     {:api-docs (aux/make-api-docs-handler api-handler-mapping (make-route-mapping))
+     {:api-docs (aux/make-api-docs-handler api-handler-mapping route-mapping)
       :metrics (aux/make-metrics-handler api-handler-mapping metrics)
       :not-found (aux/make-not-found-handler)})))
 
@@ -61,10 +60,12 @@
             (m/wrap-json-response)
             (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
                        :access-control-allow-methods [:get :put :post :delete])
-            (m/wrap-instrument metrics)
+            (m/wrap-instrument-rates metrics)
+            (m/wrap-instrument-open-requests metrics)
+            (m/wrap-instrument-timer metrics)
             (m/wrap-exception-catching)
             (m/wrap-logging)
-            (m/wrap-handler-key (make-route-mapping)))))))
+            (m/wrap-handler-key route-mapping))))))
 
 
 (defn make-handler
@@ -75,7 +76,7 @@
     (ys/->dep
      (wrap-middleware
       (br/make-handler
-       (make-route-mapping)
+       route-mapping
        (merge api-handler-mapping
               aux-handler-mapping))))))
 
@@ -138,7 +139,6 @@
                     (ys/named make-Δ-metrics :metrics)
                     (ys/named make-Δ-db :db)
                     (ys/named make-Δ-http-server :http-server)}))
-
 
 (defn -main
   []
