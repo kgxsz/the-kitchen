@@ -31,23 +31,32 @@
         true :not-found}])
 
 
-(defn make-api-handler-mapping
-  []
-  (c/mlet [db (ys/ask :db)]
-    (ys/->dep
-     {:users (api/make-users-handler db)
-      :create-user (api/make-create-user-handler db)
-      :articles (api/make-articles-handler db)})))
+(def group-mapping
+  {:users #{:api}
+   :create-user #{:api}
+   :articles #{:api}
+   :api-docs #{:aux}
+   :metrics #{:aux}
+   :not-found #{:aux}})
 
 
-(defn make-aux-handler-mapping
+(def doc-mapping
+  {:users api/users-doc
+   :create-user api/create-user-doc
+   :articles api/articles-doc})
+
+
+(defn make-handler-mapping
   []
-  (c/mlet [metrics (ys/ask :metrics)
-           api-handler-mapping (make-api-handler-mapping)]
+  (c/mlet [db (ys/ask :db)
+           metrics (ys/ask :metrics)]
     (ys/->dep
-     {:api-docs (aux/make-api-docs-handler api-handler-mapping route-mapping)
-      :metrics (aux/make-metrics-handler api-handler-mapping metrics)
-      :not-found (aux/make-not-found-handler)})))
+      {:users (api/make-users-handler db)
+       :create-user (api/make-create-user-handler db)
+       :articles (api/make-articles-handler db)
+       :api-docs (aux/make-api-docs-handler doc-mapping route-mapping)
+       :metrics (aux/make-metrics-handler metrics)
+       :not-found (aux/make-not-found-handler)})))
 
 
 (defn make-wrap-middleware
@@ -71,14 +80,10 @@
 (defn make-handler
   []
   (c/mlet [wrap-middleware (make-wrap-middleware)
-           api-handler-mapping (make-api-handler-mapping)
-           aux-handler-mapping (make-aux-handler-mapping)]
+           handler-mapping (make-handler-mapping)]
     (ys/->dep
      (wrap-middleware
-      (br/make-handler
-       route-mapping
-       (merge api-handler-mapping
-              aux-handler-mapping))))))
+      (br/make-handler route-mapping handler-mapping)))))
 
 
 (defn make-Δ-config
@@ -90,8 +95,7 @@
 
 (defn make-Δ-metrics
   []
-  (c/mlet [db (ys/ask :db)
-           api-handler-mapping (make-api-handler-mapping)]
+  (c/mlet [db (ys/ask :db)]
     (ys/->dep
      (let [registry (new-registry)]
        (log/info "Initialising metrics")
@@ -99,7 +103,7 @@
         {:db-gauges {:number-of-users (gauge-fn "number-of-users" #(count (:users @db)))
                      :number-of-articles (gauge-fn "number-of-articles" #(count (:articles @db)))}
          :api-handlers (into {}
-                         (for [handler-key (keys api-handler-mapping)
+                         (for [handler-key [:users :create-user :articles]
                                :let [handler-name (name handler-key)]]
                            [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
                                          :request-rate (meter registry (str handler-name "-request-rate"))

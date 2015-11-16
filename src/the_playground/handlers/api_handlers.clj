@@ -5,19 +5,21 @@
             [slingshot.slingshot :refer [try+ throw+]]
             [schema.core :as sc]))
 
+
 (defn make-users-handler
   [db]
   (-> (fn [req]
         {:status 200
          :body {:users (:users @db)}})
 
-      (m/wrap-validate {:response-schemata {200 s/UsersResponse}})
+      (m/wrap-validate {:response-schemata {200 s/UsersResponse}})))
 
-      (m/wrap-docs {:summary "Gets a list of users"
-                    :description "Lists all the users"
-                    :tags ["Users"]
-                    :responses {200 {:schema s/UsersResponse
-                                     :description "The list of users"}}})))
+(def users-doc
+  {:summary "Gets a list of users"
+   :description "Lists all the users"
+   :tags ["User"]
+   :responses {200 {:schema s/UsersResponse
+                    :description "The list of users"}}})
 
 
 (defn make-create-user-handler
@@ -40,16 +42,17 @@
 
       (m/wrap-validate {:request-schema s/CreateUserRequest
                         :response-schemata {201 s/CreateUserResponse
-                                            409 s/ErrorResponse}})
+                                            409 s/ErrorResponse}})))
 
-      (m/wrap-docs {:summary "Creates a user"
-                    :description "Creates a user"
-                    :tags ["Users"]
-                    :parameters {:body s/CreateUserRequest}
-                    :responses {201 {:schema s/CreateUserResponse
-                                     :description "The created user"}
-                                409 {:schema s/ErrorResponse
-                                     :description "The error response"}}})))
+(def create-user-doc
+  {:summary "Creates a user"
+   :description "Creates a user"
+   :tags ["User"]
+   :parameters {:body s/CreateUserRequest}
+   :responses {201 {:schema s/CreateUserResponse
+                    :description "The created user"}
+               409 {:schema s/ErrorResponse
+                    :description "The error response"}}})
 
 
 (defn make-articles-handler
@@ -58,10 +61,11 @@
         {:status 200
          :body {:articles (:articles @db)}})
 
-      (m/wrap-validate {:response-schemata {200 s/ArticlesResponse}})
+      (m/wrap-validate {:response-schemata {200 s/ArticlesResponse}})))
 
-      (m/wrap-docs {:summary "Gets a list of articles"
-                    :description "Lists all the articles"
-                    :tags ["Articles"]
-                    :responses {200 {:schema s/ArticlesResponse
-                                     :description "The list of articles"}}})))
+(def articles-doc
+  {:summary "Gets a list of articles"
+   :description "Lists all the articles"
+   :tags ["Article"]
+   :responses {200 {:schema s/ArticlesResponse
+                    :description "The list of articles"}}})

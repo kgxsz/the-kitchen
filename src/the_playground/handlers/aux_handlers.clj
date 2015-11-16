@@ -7,8 +7,9 @@
             [ring.swagger.swagger2 :as rs]
             [schema.core :as sc]))
 
+
 (defn make-api-docs-handler
-  [api-handler-mapping route-mapping]
+  [doc-mapping route-mapping]
   (fn [_]
     {:status 200
      :body (sc/with-fn-validation
@@ -17,32 +18,37 @@
                        :title "The Playground"
                        :description "A place to explore"}
                 :tags [{:name "User"
-                        :description "User stuff"}]
+                        :description "User related endpoints"}
+                       {:name "Article"
+                        :description "Article related endpoints"}]
                 :paths (apply
-                        merge-with
-                        merge
-                        (for [[handler-key _] api-handler-mapping
-                              request-method [:get :post :put :delete :head :options]
-                              :let [path (b/path-for route-mapping handler-key)]
-                              :when (= handler-key (:handler (b/match-route route-mapping path :request-method request-method)))]
-                          {path {request-method (:docs (meta (handler-key api-handler-mapping)))}}))}))}))
+                         merge-with
+                         merge
+                         (for [[handler-key doc] doc-mapping
+                               request-method [:get :post :put :delete :head :options]
+                               :let [path (b/path-for route-mapping handler-key)]
+                               :when (= handler-key (:handler (b/match-route route-mapping path :request-method request-method)))]
+                           {path {request-method doc}}))}))}))
 
-
-(defn make-not-found-handler
-  []
-  (fn [_] {:status 404}))
 
 (defn make-metrics-handler
-  [api-handler-mapping metrics]
+  [metrics]
   (fn [_]
     {:status 200
      :body {:db-gauges {:number-of-users (g/value (get-in metrics [:db-gauges :number-of-users]))
                         :number-of-articles (g/value (get-in metrics [:db-gauges :number-of-articles]))}
             :api-handlers (into {}
-                            (for [handler-key (keys api-handler-mapping)]
+                            (for [handler-key [:users :create-user :articles]]
                               [handler-key {:request-processing-time (percentiles (get-in metrics [:api-handlers handler-key :request-processing-time]))
                                             :request-rate (rates (get-in metrics [:api-handlers handler-key :request-rate]))
                                             :2xx-response-rate (rates (get-in metrics [:api-handlers handler-key :2xx-response-rate]))
                                             :4xx-response-rate (rates (get-in metrics [:api-handlers handler-key :4xx-response-rate]))
                                             :5xx-response-rate (rates (get-in metrics [:api-handlers handler-key :5xx-response-rate]))
                                             :open-requests (c/value (get-in metrics [:api-handlers handler-key :open-requests]))}]))}}))
+
+
+(defn make-not-found-handler
+  []
+  (fn [_] {:status 404}))
+
+
