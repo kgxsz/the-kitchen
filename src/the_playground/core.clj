@@ -19,6 +19,7 @@
             [metrics.timers :refer [timer]]
             [metrics.counters :refer [counter]]
             [metrics.gauges :refer [gauge-fn]]
+            [clojure.set :refer [subset?]]
             [yoyo.system :as ys]))
 
 
@@ -63,27 +64,32 @@
   []
   (c/mlet [metrics (ys/ask :metrics)]
     (ys/->dep
-      (fn [handler]
-        (-> handler
-            (wrap-json-body {:keywords? true})
-            (m/wrap-json-response)
-            (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
-                       :access-control-allow-methods [:get :put :post :delete])
-            (m/wrap-instrument-rates metrics)
-            (m/wrap-instrument-open-requests metrics)
-            (m/wrap-instrument-timer metrics)
-            (m/wrap-exception-catching)
-            (m/wrap-logging)
-            (m/wrap-handler-key route-mapping))))))
+     (fn [handler-key handler]
+       (let [groups (handler-key group-mapping)]
+         (cond-> handler
+           true (wrap-json-body {:keywords? true})
+           true (m/wrap-json-response)
+           true (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
+                           :access-control-allow-methods [:get :put :post :delete])
+           true (m/wrap-exception-catching)
+           true (m/wrap-logging)
+           (subset? #{:api} groups) (m/wrap-instrument-response-rates metrics)
+           true (m/wrap-instrument-request-rates metrics)
+           (subset? #{:api} groups) (m/wrap-instrument-open-requests metrics)
+           true (m/wrap-instrument-timer metrics)
+           true (m/wrap-handler-key route-mapping)))))))
 
 
 (defn make-handler
   []
-  (c/mlet [wrap-middleware (make-wrap-middleware)
-           handler-mapping (make-handler-mapping)]
+  (c/mlet [handler-mapping (make-handler-mapping)
+           wrap-middleware (make-wrap-middleware)]
     (ys/->dep
-     (wrap-middleware
-      (br/make-handler route-mapping handler-mapping)))))
+     (br/make-handler
+       route-mapping
+       (into {}
+         (for [[handler-key handler] handler-mapping]
+           [handler-key (wrap-middleware handler-key handler)]))))))
 
 
 (defn make-Δ-config
@@ -102,15 +108,22 @@
        (yc/->component
         {:db-gauges {:number-of-users (gauge-fn "number-of-users" #(count (:users @db)))
                      :number-of-articles (gauge-fn "number-of-articles" #(count (:articles @db)))}
-         :api-handlers (into {}
-                         (for [handler-key [:users :create-user :articles]
-                               :let [handler-name (name handler-key)]]
-                           [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
-                                         :request-rate (meter registry (str handler-name "-request-rate"))
-                                         :2xx-response-rate (meter registry (str handler-name "-2xx-response-rate"))
-                                         :4xx-response-rate (meter registry (str handler-name "-4xx-response-rate"))
-                                         :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate"))
-                                         :open-requests (counter registry (str handler-name "-open-requests"))}]))})))))
+
+         :handlers (into {}
+                     (concat
+                       (for [handler-key [:api-docs :metrics :not-found]
+                             :let [handler-name (name handler-key)]]
+                         [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
+                                       :request-rate (meter registry (str handler-name "-request-rate"))}])
+
+                       (for [handler-key [:users :create-user :articles]
+                             :let [handler-name (name handler-key)]]
+                         [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
+                                       :request-rate (meter registry (str handler-name "-request-rate"))
+                                       :2xx-response-rate (meter registry (str handler-name "-2xx-response-rate"))
+                                       :4xx-response-rate (meter registry (str handler-name "-4xx-response-rate"))
+                                       :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate"))
+                                       :open-requests (counter registry (str handler-name "-open-requests"))}])))})))))
 
 
 (defn make-Δ-db
@@ -137,15 +150,16 @@
             (stop-fn! :timeout 500)))))))
 
 
-(defn make-Δ-system
+(defn make-system
   []
+  (log/info "Starting system")
   (ys/make-system #{(ys/named make-Δ-config :config)
                     (ys/named make-Δ-metrics :metrics)
                     (ys/named make-Δ-db :db)
                     (ys/named make-Δ-http-server :http-server)}))
 
+
 (defn -main
   []
-  (log/info "Starting system")
-  (y/set-system-fn! #'make-Δ-system)
+  (y/set-system-fn! #'make-system)
   (y/start!))

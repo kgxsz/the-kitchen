@@ -18,9 +18,9 @@
                        :title "The Playground"
                        :description "A place to explore"}
                 :tags [{:name "User"
-                        :description "User related endpoints"}
+                        :description "user related endpoints"}
                        {:name "Article"
-                        :description "Article related endpoints"}]
+                        :description "article related endpoints"}]
                 :paths (apply
                          merge-with
                          merge
@@ -37,18 +37,21 @@
     {:status 200
      :body {:db-gauges {:number-of-users (g/value (get-in metrics [:db-gauges :number-of-users]))
                         :number-of-articles (g/value (get-in metrics [:db-gauges :number-of-articles]))}
-            :api-handlers (into {}
-                            (for [handler-key [:users :create-user :articles]]
-                              [handler-key {:request-processing-time (percentiles (get-in metrics [:api-handlers handler-key :request-processing-time]))
-                                            :request-rate (rates (get-in metrics [:api-handlers handler-key :request-rate]))
-                                            :2xx-response-rate (rates (get-in metrics [:api-handlers handler-key :2xx-response-rate]))
-                                            :4xx-response-rate (rates (get-in metrics [:api-handlers handler-key :4xx-response-rate]))
-                                            :5xx-response-rate (rates (get-in metrics [:api-handlers handler-key :5xx-response-rate]))
-                                            :open-requests (c/value (get-in metrics [:api-handlers handler-key :open-requests]))}]))}}))
+            :handlers (into {}
+                        (concat
+                          (for [handler-key [:api-docs :metrics :not-found]]
+                            [handler-key {:request-processing-time (percentiles (get-in metrics [:handlers handler-key :request-processing-time]))
+                                          :request-rate (rates (get-in metrics [:handlers handler-key :request-rate]))}])
+
+                          (for [handler-key [:users :create-user :articles]]
+                            [handler-key {:request-processing-time (percentiles (get-in metrics [:handlers handler-key :request-processing-time]))
+                                          :request-rate (rates (get-in metrics [:handlers handler-key :request-rate]))
+                                          :2xx-response-rate (rates (get-in metrics [:handlers handler-key :2xx-response-rate]))
+                                          :4xx-response-rate (rates (get-in metrics [:handlers handler-key :4xx-response-rate]))
+                                          :5xx-response-rate (rates (get-in metrics [:handlers handler-key :5xx-response-rate]))
+                                          :open-requests (c/value (get-in metrics [:handlers handler-key :open-requests]))}])))}}))
 
 
 (defn make-not-found-handler
   []
   (fn [_] {:status 404}))
-
-

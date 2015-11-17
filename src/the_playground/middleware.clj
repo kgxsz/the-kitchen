@@ -12,43 +12,42 @@
             [slingshot.slingshot :refer [try+]]))
 
 
-(defn wrap-instrument-rates
+(defn wrap-instrument-request-rates
   [handler metrics]
-
   (fn [{:keys [handler-key] :as request}]
-    (if-let [handler-metrics (get-in metrics [:api-handlers handler-key])]
+    (mark! (:request-rate (get-in metrics [:handlers handler-key])))
+    (handler request)))
 
-      (do (mark! (:request-rate handler-metrics))
-          (let [{:keys [status] :as response} (handler request)]
-            (cond
-              (>= status 500) (mark! (:5xx-response-rate handler-metrics))
-              (>= status 400) (mark! (:4xx-response-rate handler-metrics))
-              :else (mark! (:2xx-response-rate handler-metrics)))
-            response))
 
-      (handler request))))
+(defn wrap-instrument-response-rates
+  [handler metrics]
+  (fn [{:keys [handler-key] :as request}]
+    (let [handler-metrics (get-in metrics [:handlers handler-key])
+          {:keys [status] :as response} (handler request)]
+      (cond
+        (>= status 500) (mark! (:5xx-response-rate handler-metrics))
+        (>= status 400) (mark! (:4xx-response-rate handler-metrics))
+        :else (mark! (:2xx-response-rate handler-metrics)))
+      response)))
 
 
 (defn wrap-instrument-open-requests
   [handler metrics]
 
   (fn [{:keys [handler-key] :as request}]
-    (if-let [handler-metrics (get-in metrics [:api-handlers handler-key])]
-
-      (do (inc! (:open-requests handler-metrics))
-          (let [response (handler request)]
-            (dec! (:open-requests handler-metrics))
-            response))
-
-      (handler request))))
+    (let [open-requests (get-in metrics [:handlers handler-key :open-requests])]
+      (inc! open-requests)
+      (let [response (handler request)]
+        (dec! open-requests)
+        response))))
 
 
 (defn wrap-instrument-timer
   [handler metrics]
   (fn [{:keys [handler-key] :as request}]
-    (if-let [handler-metrics (get-in metrics [:api-handlers handler-key])]
-      (time! (:request-processing-time handler-metrics) (handler request))
-      (handler request))))
+    (time!
+     (:request-processing-time (get-in metrics [:handlers handler-key]))
+     (handler request))))
 
 
 (defn wrap-handler-key
