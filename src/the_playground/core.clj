@@ -19,7 +19,6 @@
             [metrics.timers :refer [timer]]
             [metrics.counters :refer [counter]]
             [metrics.gauges :refer [gauge-fn]]
-            [clojure.set :refer [subset?]]
             [yoyo.system :as ys]))
 
 
@@ -61,23 +60,26 @@
 
 
 (defn make-wrap-middleware
+  "Makes a function to wrap middleware around individual handlers.
+   Different handlers are wrapped by different middleware depending
+   on the group they belong to. The :all keyword means that the
+   particular middleware will be applied to all handlers."
   []
   (c/mlet [metrics (ys/ask :metrics)]
     (ys/->dep
-     (fn [handler-key handler]
-       (let [groups (handler-key group-mapping)]
-         (cond-> handler
-           true (wrap-json-body {:keywords? true})
-           true (m/wrap-json-response)
-           true (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
-                           :access-control-allow-methods [:get :put :post :delete])
-           true (m/wrap-exception-catching)
-           true (m/wrap-logging)
-           (subset? #{:api} groups) (m/wrap-instrument-response-rates metrics)
-           true (m/wrap-instrument-request-rates metrics)
-           (subset? #{:api} groups) (m/wrap-instrument-open-requests metrics)
-           true (m/wrap-instrument-timer metrics)
-           true (m/wrap-handler-key route-mapping)))))))
+     (fn [handler groups]
+       (u/middleware-> handler groups
+            :all (wrap-json-body {:keywords? true})
+            :all (m/wrap-json-response)
+            :all (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
+                            :access-control-allow-methods [:get :put :post :delete])
+            :all (m/wrap-exception-catching)
+            :all (m/wrap-logging)
+            #{:api} (m/wrap-instrument-response-rates metrics)
+            :all (m/wrap-instrument-request-rates metrics)
+            #{:api} (m/wrap-instrument-open-requests metrics)
+            :all (m/wrap-instrument-timer metrics)
+            :all (m/wrap-handler-key route-mapping))))))
 
 
 (defn make-handler
@@ -89,7 +91,7 @@
        route-mapping
        (into {}
          (for [[handler-key handler] handler-mapping]
-           [handler-key (wrap-middleware handler-key handler)]))))))
+           [handler-key (wrap-middleware handler (handler-key group-mapping))]))))))
 
 
 (defn make-Δ-config
