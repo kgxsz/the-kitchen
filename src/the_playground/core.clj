@@ -67,8 +67,9 @@
   []
   (c/mlet [metrics (ys/ask :metrics)]
     (ys/->dep
-     (fn [handler groups]
-       (u/middleware-> handler groups
+     (fn [handler handler-key]
+       (u/middleware-> handler (handler-key group-mapping)
+            #{:api} (m/wrap-validate (handler-key doc-mapping))
             :all (wrap-json-body {:keywords? true})
             :all (m/wrap-json-response)
             :all (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
@@ -91,7 +92,7 @@
        route-mapping
        (into {}
          (for [[handler-key handler] handler-mapping]
-           [handler-key (wrap-middleware handler (handler-key group-mapping))]))))))
+           [handler-key (wrap-middleware handler handler-key)]))))))
 
 
 (defn make-Δ-config
