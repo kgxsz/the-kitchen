@@ -123,6 +123,7 @@
                          [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
                                        :request-rate (meter registry (str handler-name "-request-rate"))
                                        :2xx-response-rate (meter registry (str handler-name "-2xx-response-rate"))
+                                       :3xx-response-rate (meter registry (str handler-name "-3xx-response-rate"))
                                        :4xx-response-rate (meter registry (str handler-name "-4xx-response-rate"))
                                        :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate"))
                                        :open-requests (counter registry (str handler-name "-open-requests"))}])))})))))

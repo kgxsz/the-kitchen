@@ -47,6 +47,7 @@
                             [handler-key {:request-processing-time (percentiles (get-in metrics [:handlers handler-key :request-processing-time]))
                                           :request-rate (rates (get-in metrics [:handlers handler-key :request-rate]))
                                           :2xx-response-rate (rates (get-in metrics [:handlers handler-key :2xx-response-rate]))
+                                          :3xx-response-rate (rates (get-in metrics [:handlers handler-key :3xx-response-rate]))
                                           :4xx-response-rate (rates (get-in metrics [:handlers handler-key :4xx-response-rate]))
                                           :5xx-response-rate (rates (get-in metrics [:handlers handler-key :5xx-response-rate]))
                                           :open-requests (c/value (get-in metrics [:handlers handler-key :open-requests]))}])))}}))

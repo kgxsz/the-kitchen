@@ -24,22 +24,24 @@
   (fn [{:keys [handler-key] :as request}]
     (let [handler-metrics (get-in metrics [:handlers handler-key])
           {:keys [status] :as response} (handler request)]
+
       (cond
         (>= status 500) (mark! (:5xx-response-rate handler-metrics))
         (>= status 400) (mark! (:4xx-response-rate handler-metrics))
-        :else (mark! (:2xx-response-rate handler-metrics)))
+        (>= status 300) (mark! (:3xx-response-rate handler-metrics))
+        (>= status 200) (mark! (:2xx-response-rate handler-metrics)))
+
       response)))
 
 
 (defn wrap-instrument-open-requests
   [handler metrics]
-
   (fn [{:keys [handler-key] :as request}]
-    (let [open-requests (get-in metrics [:handlers handler-key :open-requests])]
-      (inc! open-requests)
-      (let [response (handler request)]
-        (dec! open-requests)
-        response))))
+    (let [open-requests (get-in metrics [:handlers handler-key :open-requests])
+          _ (inc! open-requests)
+          response (handler request)
+          _ (dec! open-requests)]
+      response)))
 
 
 (defn wrap-instrument-timer
