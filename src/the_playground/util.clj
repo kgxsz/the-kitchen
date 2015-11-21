@@ -6,17 +6,19 @@
   [request-method]
   (-> request-method name upper-case))
 
-(defmacro middleware->
-  "Works like the cond-> macro, but ensures that the handler
-   belongs to the correct group before threading it though."
-  [handler groups & clauses]
+
+(defmacro when-group->
+  "Works like the cond-> macro, but ensures that the subject
+   is threaded only when the clause's groups are a subset of
+   the subject's groups, or if the :all keyword is used."
+  [subject subject-groups & clauses]
   (assert (even? (count clauses)))
   (let [g (gensym)
-        pstep (fn [[group-set step]]
+        pstep (fn [[clause-groups clause-form]]
                 `(cond
-                   (= ~group-set :all) (-> ~g ~step)
-                   (clojure.set/subset? ~group-set ~groups) (-> ~g ~step)
+                   (= ~clause-groups :all) (-> ~g ~clause-form)
+                   (clojure.set/subset? ~clause-groups ~subject-groups) (-> ~g ~clause-form)
                    :else ~g))]
-    `(let [~g ~handler
+    `(let [~g ~subject
            ~@(interleave (repeat g) (map pstep (partition 2 clauses)))]
        ~g)))

@@ -31,6 +31,12 @@
         true :not-found}])
 
 
+(defn list-handler-keys
+  []
+  (letfn [(get-keys [m] (for [[k v] m] (if (map? v) (get-keys v) v)))]
+    (flatten (get-keys (second route-mapping)))))
+
+
 (def group-mapping
   {:users #{:api}
    :create-user #{:api}
@@ -59,40 +65,31 @@
        :not-found (aux/make-not-found-handler)})))
 
 
-(defn make-wrap-middleware
-  "Makes a function to wrap middleware around individual handlers.
-   Different handlers are wrapped by different middleware depending
-   on the group they belong to. The :all keyword means that the
-   particular middleware will be applied to all handlers."
-  []
-  (c/mlet [metrics (ys/ask :metrics)]
-    (ys/->dep
-     (fn [handler handler-key]
-       (u/middleware-> handler (handler-key group-mapping)
-            #{:api} (m/wrap-validate (handler-key doc-mapping))
-            :all (wrap-json-body {:keywords? true})
-            :all (m/wrap-json-response)
-            :all (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
-                            :access-control-allow-methods [:get :put :post :delete])
-            :all (m/wrap-exception-catching)
-            :all (m/wrap-logging)
-            #{:api} (m/wrap-instrument-response-rates metrics)
-            :all (m/wrap-instrument-request-rates metrics)
-            #{:api} (m/wrap-instrument-open-requests metrics)
-            :all (m/wrap-instrument-timer metrics)
-            :all (m/wrap-handler-key route-mapping))))))
-
-
 (defn make-handler
+  "Makes the top level handler with middleware wrpped around each handler.
+   The left side of the clause denotes the groups that the handler
+   has to belong to in order for the middleware to wrap it."
   []
   (c/mlet [handler-mapping (make-handler-mapping)
-           wrap-middleware (make-wrap-middleware)]
+           metrics (ys/ask :metrics)]
     (ys/->dep
      (br/make-handler
        route-mapping
        (into {}
          (for [[handler-key handler] handler-mapping]
-           [handler-key (wrap-middleware handler handler-key)]))))))
+           [handler-key (u/when-group-> handler (handler-key group-mapping)
+                          #{:api} (m/wrap-validate (handler-key doc-mapping))
+                          :all (wrap-json-body {:keywords? true})
+                          :all (m/wrap-json-response)
+                          :all (m/wrap-exception-catching)
+                          :all (m/wrap-logging)
+                          #{:api} (m/wrap-instrument-response-rates metrics)
+                          :all (m/wrap-instrument-request-rates metrics)
+                          #{:api} (m/wrap-instrument-open-requests metrics)
+                          :all (m/wrap-instrument-timer metrics)
+                          :all (m/wrap-handler-key route-mapping)
+                          :all (wrap-cors :access-control-allow-origin [#"http://petstore.swagger.io"]
+                                          :access-control-allow-methods [:get :put :post :delete]))]))))))
 
 
 (defn make-Δ-config
