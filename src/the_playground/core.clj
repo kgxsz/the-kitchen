@@ -8,17 +8,17 @@
             [cats.core :as c]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [metrics.core :refer [new-registry]]
+            [metrics.counters :refer [counter]]
+            [metrics.gauges :refer [gauge-fn]]
+            [metrics.meters :refer [meter]]
+            [metrics.timers :refer [timer]]
             [nomad :as n]
             [org.httpkit.server :refer [run-server]]
             [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.json :refer [wrap-json-body]]
             [yoyo :as y]
             [yoyo.core :as yc]
-            [metrics.core :refer [new-registry]]
-            [metrics.meters :refer [meter]]
-            [metrics.timers :refer [timer]]
-            [metrics.counters :refer [counter]]
-            [metrics.gauges :refer [gauge-fn]]
             [yoyo.system :as ys]))
 
 
@@ -29,12 +29,6 @@
         "api-docs" {:get :api-docs}
         "metrics" {:get :metrics}
         true :not-found}])
-
-
-(defn list-handler-keys
-  []
-  (letfn [(get-keys [m] (for [[k v] m] (if (map? v) (get-keys v) v)))]
-    (flatten (get-keys (second route-mapping)))))
 
 
 (def group-mapping
@@ -60,8 +54,8 @@
       {:users (api/make-users-handler db)
        :create-user (api/make-create-user-handler db)
        :articles (api/make-articles-handler db)
-       :api-docs (aux/make-api-docs-handler doc-mapping route-mapping)
-       :metrics (aux/make-metrics-handler metrics)
+       :api-docs (aux/make-api-docs-handler doc-mapping group-mapping route-mapping)
+       :metrics (aux/make-metrics-handler metrics group-mapping route-mapping)
        :not-found (aux/make-not-found-handler)})))
 
 
@@ -76,8 +70,8 @@
      (br/make-handler
        route-mapping
        (into {}
-         (for [[handler-key handler] handler-mapping]
-           [handler-key (u/when-group-> handler (handler-key group-mapping)
+         (for [handler-key (u/list-handler-keys route-mapping)]
+           [handler-key (u/when-group-> (handler-key handler-mapping) (handler-key group-mapping)
                           #{:api} (m/wrap-validate (handler-key doc-mapping))
                           :all (wrap-json-body {:keywords? true})
                           :all (m/wrap-json-response)
@@ -108,23 +102,17 @@
        (yc/->component
         {:db-gauges {:number-of-users (gauge-fn "number-of-users" #(count (:users @db)))
                      :number-of-articles (gauge-fn "number-of-articles" #(count (:articles @db)))}
-
          :handlers (into {}
-                     (concat
-                       (for [handler-key [:api-docs :metrics :not-found]
-                             :let [handler-name (name handler-key)]]
-                         [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
-                                       :request-rate (meter registry (str handler-name "-request-rate"))}])
-
-                       (for [handler-key [:users :create-user :articles]
-                             :let [handler-name (name handler-key)]]
-                         [handler-key {:request-processing-time (timer registry (str handler-name "-request-processing-time"))
-                                       :request-rate (meter registry (str handler-name "-request-rate"))
-                                       :2xx-response-rate (meter registry (str handler-name "-2xx-response-rate"))
-                                       :3xx-response-rate (meter registry (str handler-name "-3xx-response-rate"))
-                                       :4xx-response-rate (meter registry (str handler-name "-4xx-response-rate"))
-                                       :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate"))
-                                       :open-requests (counter registry (str handler-name "-open-requests"))}])))})))))
+                     (for [handler-key (u/list-handler-keys route-mapping)
+                           :let [handler-name (name handler-key)]]
+                       [handler-key (u/when-group-> {} (handler-key group-mapping)
+                                      :all (assoc :request-processing-time (timer registry (str handler-name "-request-processing-time")))
+                                      :all (assoc :request-rate (meter registry (str handler-name "-request-rate")))
+                                      #{:api} (assoc :2xx-response-rate (meter registry (str handler-name "-2xx-response-rate")))
+                                      #{:api} (assoc :3xx-response-rate (meter registry (str handler-name "-3xx-response-rate")))
+                                      #{:api} (assoc :4xx-response-rate (meter registry (str handler-name "-4xx-response-rate")))
+                                      #{:api} (assoc :5xx-response-rate (meter registry (str handler-name "-5xx-response-rate")))
+                                      #{:api} (assoc :open-requests (counter registry (str handler-name "-open-requests"))))]))})))))
 
 
 (defn make-Δ-db
