@@ -23,9 +23,9 @@
 
 
 (def route-mapping
-  ["/" {"api" {"/users" {:get :users
-                         :post :create-user}
-               "/articles" {:get :articles}}
+  ["/" {"api" {"/users" {"" {:get :users
+                             :post :create-user}
+                         ["/" :user-id] {:get :user}}}
         "api-docs" {:get :api-docs}
         "metrics" {:get :metrics}
         true :not-found}])
@@ -34,16 +34,16 @@
 (def group-mapping
   {:users #{:api}
    :create-user #{:api}
-   :articles #{:api}
+   :user #{:api}
    :api-docs #{:aux}
    :metrics #{:aux}
    :not-found #{:aux}})
 
 
 (def doc-mapping
-  {:users api/users-doc
-   :create-user api/create-user-doc
-   :articles api/articles-doc})
+  {:users (api/make-users-doc route-mapping)
+   :create-user (api/make-create-user-doc route-mapping)
+   :user (api/make-user-doc route-mapping)})
 
 
 (defn make-handler-mapping
@@ -51,11 +51,11 @@
   (c/mlet [db (ys/ask :db)
            metrics (ys/ask :metrics)]
     (ys/->dep
-      {:users (api/make-users-handler db)
-       :create-user (api/make-create-user-handler db)
-       :articles (api/make-articles-handler db)
-       :api-docs (aux/make-api-docs-handler doc-mapping group-mapping route-mapping)
-       :metrics (aux/make-metrics-handler metrics group-mapping route-mapping)
+      {:users (api/make-users-handler route-mapping db)
+       :create-user (api/make-create-user-handler route-mapping db)
+       :user (api/make-user-handler route-mapping db)
+       :api-docs (aux/make-api-docs-handler route-mapping group-mapping doc-mapping)
+       :metrics (aux/make-metrics-handler route-mapping group-mapping metrics)
        :not-found (aux/make-not-found-handler)})))
 
 
@@ -74,7 +74,8 @@
            [handler-key (u/when-group-> (handler-key handler-mapping) (handler-key group-mapping)
                           #{:api} (m/wrap-validate (handler-key doc-mapping))
                           :all (wrap-json-body {:keywords? true})
-                          :all (m/wrap-json-response)
+                          #{:api} (m/wrap-collection-json-response)
+                          #{:aux} (m/wrap-generic-json-response)
                           :all (m/wrap-exception-catching)
                           :all (m/wrap-logging)
                           #{:api} (m/wrap-instrument-response-rates metrics)
@@ -117,10 +118,12 @@
 
 (defn make-Δ-db
   []
-  (let [db (atom {:users [{:id 154 :name "Jane"}
-                          {:id 137 :name "Henry"}]
-                  :articles [{:id 176 :title "Things I like" :text "I like cheese and bread."}
-                             {:id 146 :title "Superconductivity" :text "It's really hard to understand."}]})]
+  (let [db (atom {:users [[{:name "id" :value "123"}
+                           {:name "name" :value "Jenny"}]
+                          [{:name "id" :value "456"}
+                           {:name "name" :value "John"}]
+                          [{:name "id" :value "789"}
+                           {:name "name" :value "Rachel"}]]})]
     (log/info "Initialising db")
     (yc/->component db)))
 

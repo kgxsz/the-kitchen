@@ -6,10 +6,12 @@
             [yoyo.core :as yc]
             [yoyo.system :as ys]))
 
+
 (defn make-Δ-test-config
   []
   (yc/->component
    {:http-server-port 8084}))
+
 
 (defn make-Δ-test-system
   []
@@ -18,11 +20,14 @@
                     (ys/named make-Δ-db :db)
                     (ys/named make-Δ-http-server :http-server)}))
 
+
 (deftest end-to-end-test
   (yc/with-component (make-Δ-test-system)
     (fn [{:keys [config]}]
+
       (let [users-url (str "http://localhost:" (:http-server-port config) "/api/users")
             headers {"Content-Type" "application/json", "Accept" "application/json"}]
+
 
         (testing "A user can be created"
           (let [number-of-users-before (-> @(http/get users-url) :body (parse-string true) :users count)
@@ -33,8 +38,9 @@
 
             (is (= 201 (:status create-user-response)) "The user creation gets a created response")
             (is (= "Peter" (-> create-user-response :body (parse-string true) :user :name)) "The user creation response includes the new user's name")
-            (is (not-empty (filter #(= (:name %) "Peter") (:users users-response-body))) "The new user exists ins the system")
+            (is (not-empty (filter #(= (:name %) "Peter") (:users users-response-body))) "The new user exists in the system")
             (is (= (inc number-of-users-before) number-of-users-after) "The number of users in the system has increased by one")))
+
 
         (testing "The same user cannot be created more than once"
           (let [number-of-users-before (-> @(http/get users-url) :body (parse-string true) :users count)

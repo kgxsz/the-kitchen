@@ -10,31 +10,31 @@
 
 
 (defn make-api-docs-handler
-  [doc-mapping group-mapping route-mapping]
+  [route-mapping group-mapping doc-mapping]
   (fn [_]
     {:status 200
      :body (sc/with-fn-validation
              (rs/swagger-json
-               {:info {:version "1.0.0"
-                       :title "The Playground"
-                       :description "A place to explore"}
-                :tags [{:name "User"
-                        :description "user related endpoints"}
-                       {:name "Article"
-                        :description "article related endpoints"}]
-                :paths (apply
-                         merge-with
-                         merge
-                         (for [handler-key (u/list-handler-keys route-mapping)
-                               request-method [:get :post :put :delete :head :options]
-                               :when (contains? (handler-key group-mapping) :api)
-                               :let [path (b/path-for route-mapping handler-key)]
-                               :when (= handler-key (:handler (b/match-route route-mapping path :request-method request-method)))]
-                           {path {request-method (handler-key doc-mapping)}}))}))}))
+              {:info {:version "1.0.0"
+                      :title "The Playground"
+                      :description "A place to explore"
+                      :license {:name "Eclipse Public License"
+                                :url "http://www.eclipse.org/legal/epl-v10.html"}}
+               :tags [{:name "User"
+                       :description "user related endpoints"}
+                      {:name "Article"
+                       :description "article related endpoints"}]
+               :consumes ["application/vnd.collection+json"]
+               :produces ["application/vnd.collection+json"]
+               :paths (apply merge-with merge
+                        (for [handler-key (u/list-handler-keys route-mapping)
+                              :when (contains? (handler-key group-mapping) :api)
+                              :let [{:keys [path method handler-doc]} (handler-key doc-mapping)]]
+                          {path {method handler-doc}}))}))}))
 
 
 (defn make-metrics-handler
-  [metrics group-mapping route-mapping]
+  [route-mapping group-mapping metrics]
   (fn [_]
     {:status 200
      :body {:db-gauges {:number-of-users (g/value (get-in metrics [:db-gauges :number-of-users]))

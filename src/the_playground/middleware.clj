@@ -66,7 +66,7 @@
    Return a 400 response for an unsatisfied request schema.
    Throws an exception up for an unsatisfied response schema.
    Don't use this at the top level, only as local handler middleware."
-  [handler handler-doc]
+  [handler {:keys [handler-doc]}]
 
   (let [request-schema (get-in handler-doc [:parameters :body])
         response-schemata (:responses handler-doc)]
@@ -80,15 +80,21 @@
          response)
 
        (catch [:type :schema.core/error :schema request-schema] {:keys [error]}
-         (log/warn "Validation failed for incoming" (format-request-method request-method)  "request to" uri "-" error)
+         (log/warn "Validation fcheiled for incoming" (format-request-method request-method)  "request to" uri "-" error)
          {:status 400
           :body {:error error}})))))
 
 
-(defn wrap-json-response
-  "Ensures that the outgoing response is written to JSON, and the approproate headers are set."
+(defn wrap-collection-json-response
   [handler]
+  (fn [request]
+    (-> (handler request)
+        (update :body generate-string)
+        (update :headers assoc "Content-Type" "application/vnd.collection+json"))))
 
+
+(defn wrap-generic-json-response
+  [handler]
   (fn [request]
     (-> (handler request)
         (update :body generate-string)
