@@ -1,101 +1,113 @@
 (ns the-playground.handlers.api-handlers
-  (:require [the-playground.middleware :as m]
+  (:require [the-playground.db :as db]
+            [the-playground.middleware :as m]
             [the-playground.schema :as s]
+            [the-playground.util :as u]
             [bidi.bidi :as b]
             [clojure.string :refer [lower-case]]
-            [slingshot.slingshot :refer [try+ throw+]]
-            [schema.core :as sc]))
+            [schema.core :as sc]
+            [slingshot.slingshot :refer [try+]]))
 
 
 (defn make-users-handler
   [route-mapping db]
+
   (fn [{:keys [handler-key] :as request}]
-    {:status 200
-     :body {:collection {:version 1.0
-                         :href (b/path-for route-mapping :users)
-                         :items [{:href "/api/users/123"
-                                  :data [{:name "id" :value "123"}
-                                         {:name "name" :value "Jenny"}]
-                                  :links []}
-                                 {:href "/api/users/456"
-                                  :data [{:name "id" :value "456"}
-                                         {:name "name" :value "John"}]
-                                  :links []}
-                                 {:href "/api/users/789"
-                                  :data [{:name "id" :value "789"}
-                                         {:name "name" :value "Rachel"}]
-                                  :links []}]
-                         :links []
-                         :queries []
-                         :template {:data [{:prompt "The user's name" :name "name" :value ""}]}}}}))
+    (let [items (map
+                  (fn [user]
+                    {:href (str (b/path-for route-mapping :user :user-id (db/get-user-id user)))
+                     :data user
+                     :links []})
+                  (:users @db))]
+
+      {:status 200
+       :body {:collection {:version 1.0
+                           :href (b/path-for route-mapping :users)
+                           :items items
+                           :links []
+                           :queries []
+                           :template {:data [{:prompt "the user's name" :name "name" :value ""}]}}}})))
 
 
 (defn make-users-doc
   [route-mapping]
   {:path (b/path-for route-mapping :users)
    :method :get
-   :handler-doc {:summary "Gets a list of users"
-                 :description "Lists all the users"
-                 :tags ["User"]
+   :handler-doc {:summary "gets a list of users"
+                 :description "lists all the users"
+                 :tags ["user"]
                  :responses {200 {:schema s/Collection
-                                  :description "The list of users"}}}})
+                                  :description "the list of users"}}}})
 
 
 (defn make-create-user-handler
   [route-mapping db]
-  (fn [{:keys [body request-method uri] :as req}]
+
+  (fn [{:keys [body request-method uri] :as request}]
     (try+
-     (let [new-user "keigo"]
-
-       #_(when (some #(= (lower-case (:name %)) (lower-case (:name new-user))) (:users @db))
-         (throw+ {:type :user-already-exists}))
-
-       #_(swap! db update :users conj new-user)
+     (let [data (-> body (get-in [:template :data]))
+           name (-> data first :value)
+           user (db/create-user! name db)]
 
        {:status 201
         :body {:collection {:version 1.0
                             :href (b/path-for route-mapping :users)
-                            :items [{:href "/api/users/123"
-                                     :data [{:name "id" :value "123"}
-                                            {:name "name" :value "Jenny"}]
+                            :items [{:href (str (b/path-for route-mapping :user :user-id (db/get-user-id user)))
+                                     :data user
                                      :links []}]}}})
 
-     (catch [:type :user-already-exists] e
+     (catch [:type :user-already-exists] _
        {:status 409
-        :body {:error "User already exists"}}))))
+        :body {:collection {:version 1.0
+                            :href (b/path-for route-mapping :users)
+                            :items []
+                            :errors [{:name "user-already-exists" :message "could not create a new user because the user already exists"}]}}}))))
 
 (defn make-create-user-doc
   [route-mapping]
   {:path (b/path-for route-mapping :create-user)
    :method :post
-   :handler-doc {:summary "Creates a user"
-                 :description "Creates a user"
-                 :tags ["User"]
+   :handler-doc {:summary "creates a user"
+                 :description "creates a user"
+                 :tags ["user"]
                  :parameters {:body s/CreateUserTemplate}
                  :responses {201 {:schema s/Collection
-                                  :description "The created user"}
-                             409 {:schema s/ErrorResponse
-                                  :description "The error response"}}}})
+                                  :description "the created user"}
+                             409 {:schema s/Collection
+                                  :description "could not create a new user because the user already exists"}}}})
 
 
 (defn make-user-handler
   [route-mapping db]
-  (fn [{:keys [handler-key] :as request}]
-    {:status 200
-     :body {:collection {:version 1.0
-                         :href (b/path-for route-mapping :users)
-                         :items [{:href "/api/users/123"
-                                  :data [{:name "id" :value "123"}
-                                         {:name "name" :value "Jenny"}]
-                                  :links []}]}}}))
+
+  (fn [{:keys [handler-key route-params] :as request}]
+    (try+
+     (let [user-id (str (:user-id route-params))
+           item {:href (str (b/path-for route-mapping :user :user-id user-id))
+                 :data (db/get-user-by-user-id user-id db)
+                 :links []}]
+
+       {:status 200
+        :body {:collection {:version 1.0
+                            :href (b/path-for route-mapping :users)
+                            :items [item]}}})
+
+     (catch [:type :user-not-found] _
+       {:status 404
+        :body {:collection {:version 1.0
+                            :href (b/path-for route-mapping :users)
+                            :items []
+                            :errors [{:name "user-not-found" :message "the user does not exist, or no longer exists"}]}}}))))
 
 (defn make-user-doc
   [route-mapping]
   {:path (b/path-for route-mapping :user :user-id ":user-id")
    :method :get
-   :handler-doc {:summary "Gets a user"
-                 :description "Returns a user"
-                 :tags ["User"]
+   :handler-doc {:summary "gets a user"
+                 :description "returns a user"
+                 :tags ["user"]
                  :parameters {:path {:user-id sc/Num}}
                  :responses {200 {:schema s/Collection
-                                  :description "The list of articles"}}}})
+                                  :description "the list of articles"}
+                             404 {:schema s/Collection
+                                  :description "the user does not exist, or no longer exists"}}}})

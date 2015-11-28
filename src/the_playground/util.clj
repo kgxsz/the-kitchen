@@ -13,7 +13,6 @@
   (letfn [(get-keys [m] (for [[k v] m] (if (map? v) (get-keys v) v)))]
     (flatten (get-keys (second route-mapping)))))
 
-
 (defmacro when-group->
   "Works like the cond-> macro, but ensures that the subject
    is threaded only when the clause's groups are a subset of

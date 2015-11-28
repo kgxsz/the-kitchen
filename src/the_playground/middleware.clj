@@ -80,9 +80,9 @@
          response)
 
        (catch [:type :schema.core/error :schema request-schema] {:keys [error]}
-         (log/warn "Validation fcheiled for incoming" (format-request-method request-method)  "request to" uri "-" error)
+         (log/warn "Validation failed for incoming" (format-request-method request-method)  "request to" uri "-" error)
          {:status 400
-          :body {:error error}})))))
+          :body error})))))
 
 
 (defn wrap-collection-json-response
@@ -126,6 +126,6 @@
   (fn [request]
     (try+
      (handler request)
-     (catch Exception e
-       (log/error  "Unhandled exception -" e)
+     (catch Object o
+       (log/error  "Unhandled exception -" o)
        {:status 500}))))

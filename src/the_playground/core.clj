@@ -118,11 +118,11 @@
 
 (defn make-Δ-db
   []
-  (let [db (atom {:users [[{:name "id" :value "123"}
+  (let [db (atom {:users [[{:name "user-id" :value "123"}
                            {:name "name" :value "Jenny"}]
-                          [{:name "id" :value "456"}
+                          [{:name "user-id" :value "456"}
                            {:name "name" :value "John"}]
-                          [{:name "id" :value "789"}
+                          [{:name "user-id" :value "789"}
                            {:name "name" :value "Rachel"}]]})]
     (log/info "Initialising db")
     (yc/->component db)))
