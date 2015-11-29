@@ -4,23 +4,24 @@
             [slingshot.slingshot :refer [throw+]]))
 
 
-(defn get-user-by-user-id
-  [user-id db]
-  (if-let [user (some
-                 (fn [user] (when (= user-id (:user-id user)) user))
-                 (:users @db))]
-    user
-    (throw+ {:type :user-not-found})))
+(defn get-users-by
+  [key-name value db]
+  (filter (fn [user] (= value (key-name user))) (:users @db)))
+
+
+(defn get-user-by
+  [key-name value db]
+  (first (get-users-by key-name value db)))
 
 
 (defn user-exists?
-  [name db]
-  (some #(= name (:name %)) (:users @db)))
+  [user db]
+  (not (empty? (get-users-by :email-address (:email-address user) db))))
 
 
 (defn create-user!
   [user db]
-  (when (user-exists? (:name user) db) (throw+ {:type :user-already-exists}))
+  (when (user-exists? user db) (throw+ {:type :user-already-exists}))
   (let [user (merge user {:user-id (uuid/v1)})]
     (swap! db update :users conj user)
     user))

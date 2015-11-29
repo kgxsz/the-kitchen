@@ -14,11 +14,6 @@
   (->> data (some #(when (= (:name %) name) %)) :value))
 
 
-(defn extract-name
-  [user]
-  (extract-value user "name"))
-
-
 (defn extract-collection
   [body]
   (-> body (parse-string true) :collection))
@@ -91,15 +86,19 @@
 
         (testing "a user can be created"
           (let [{:keys [body]} @(http/get users-url {:headers get-headers})
-                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template (extract-template body) {"name" "Peter"})})]
+                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template (extract-template body) {"email-address" "peter@test.com"
+                                                                                                                                 "first-name" "Peter"
+                                                                                                                                 "last-name" "Smith"})})]
 
               (is (= 201 status) "the request gets a created response")
-              (is (= "Peter" (-> body extract-items first :data extract-name)) "the response contains the created user")))
+              (is (= "Peter" (-> body extract-items first :data (extract-value "first-name"))) "the response contains the created user")))
 
 
-        (testing "a user cannot be created more than once"
+        (testing "a user cannot be created if their email address already exists"
           (let [{:keys [body]} @(http/get users-url {:headers get-headers})
-                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template (extract-template body) {"name" "Peter"})})]
+                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template (extract-template body) {"email-address" "peter@test.com"
+                                                                                                                                 "first-name" "Peter"
+                                                                                                                                 "last-name" "Johnson"})})]
 
               (is (= 409 status) "The user creation gets a conflict response")
               (is (= "user-already-exists" (-> body extract-error :title)) "the response contains the error")))
@@ -121,7 +120,7 @@
                 {:keys [status body]} @(http/get user-url {:headers get-headers})]
 
             (is (= 200 status) "the request gets an ok response")
-            (is (= "Peter" (-> body extract-items first :data extract-name)) "the user's name is Peter")))
+            (is (= "Peter" (-> body extract-items first :data (extract-value "first-name"))) "the user's first name is Peter")))
 
 
         (testing "A user's details can be updated")

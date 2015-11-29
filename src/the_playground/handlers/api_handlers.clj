@@ -17,9 +17,6 @@
        (apply merge)
        ((fn [m] (update m :user-id scr/string->uuid)))))
 
-(coerce-in [{:name "user-id" :value "66679f70-96cc-11e5-837e-2380a99a9487"}
-                  {:name "name" :value "Keigo"}])
-
 
 (defn coerce-out
   [data]
@@ -33,8 +30,7 @@
     (let [{:keys [body] :as response} (handler request)]
       (assoc response :body {:collection (merge {:version 1.0
                                                  :href (b/path-for route-mapping :users)
-                                                 :items []
-                                                 :template {:data [{:prompt "the user's name" :name "name" :value ""}]}}
+                                                 :items []}
                                                 body)}))))
 
 
@@ -49,7 +45,10 @@
                   (:users @db))]
 
       {:status 200
-       :body {:items items}})))
+       :body {:items items
+              :template {:data [{:prompt "the user's email address" :name "email-address" :value ""}
+                                {:prompt "the user's first name" :name "first-name" :value ""}
+                                {:prompt "the user's last name" :name "last-name" :value ""}]}}})))
 
 
 (defn make-users-doc
@@ -87,7 +86,7 @@
    :handler-doc {:summary "creates a user"
                  :description "creates a user"
                  :tags ["user"]
-                 :parameters {:body s/CreateUserTemplate}
+                 :parameters {:body s/Template}
                  :responses {201 {:schema s/Collection
                                   :description "the user was created successfully"}
                              409 {:schema s/Collection
@@ -100,7 +99,7 @@
   (fn [{:keys [handler-key route-params] :as request}]
     (try+
       (let [user-id (-> route-params :user-id scr/string->uuid)
-            user (db/get-user-by-user-id user-id db)
+            user (db/get-user-by :user-id user-id db)
             item {:href (b/path-for route-mapping :user :user-id (:user-id user))
                   :data (coerce-out user)}]
 

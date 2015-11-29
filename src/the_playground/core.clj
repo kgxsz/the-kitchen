@@ -119,9 +119,18 @@
 
 (defn make-Δ-db
   []
-  (let [db (atom {:users [{:user-id #uuid "2c772a10-96cc-11e5-837e-2380a99a9487" :name "Jenny"}
-                          {:user-id #uuid "5e7e2bd0-96cc-11e5-837e-2380a99a9487" :name "John"}
-                          {:user-id #uuid "66679f70-96cc-11e5-837e-2380a99a9487" :name "Rachel"}]})]
+  (let [db (atom {:users [{:user-id #uuid "2c772a10-96cc-11e5-837e-2380a99a9487"
+                           :email-address "jenny@test.com"
+                           :first-name "Jenny"
+                           :last-name "Bishop"}
+                          {:user-id #uuid "5e7e2bd0-96cc-11e5-837e-2380a99a9487"
+                           :email-address "john@test.com"
+                           :first-name "John"
+                           :last-name "Candy"}
+                          {:user-id #uuid "66679f70-96cc-11e5-837e-2380a99a9487"
+                           :email-address "rachel@test.com"
+                           :first-name "Rachel"
+                           :last-name "Jacobs"}]})]
     (log/info "Initialising db")
     (yc/->component db)))
 
