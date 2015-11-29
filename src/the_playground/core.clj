@@ -32,9 +32,9 @@
 
 
 (def group-mapping
-  {:users #{:api}
-   :create-user #{:api}
-   :user #{:api}
+  {:users #{:api :users-collection}
+   :create-user #{:api :users-collection}
+   :user #{:api :users-collection}
    :api-docs #{:aux}
    :metrics #{:aux}
    :not-found #{:aux}})
@@ -72,6 +72,7 @@
        (into {}
          (for [handler-key (u/list-handler-keys route-mapping)]
            [handler-key (u/when-group-> (handler-key handler-mapping) (handler-key group-mapping)
+                          #{:users-collection} (api/wrap-users-collection route-mapping)
                           #{:api} (m/wrap-validate (handler-key doc-mapping))
                           :all (wrap-json-body {:keywords? true})
                           #{:api} (m/wrap-collection-json-response)
