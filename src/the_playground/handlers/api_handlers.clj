@@ -10,18 +10,18 @@
             [slingshot.slingshot :refer [try+]]))
 
 
-(defn naive-coerce-in
+(defn coerce-in
   [data]
   (->> data
        (map (fn [{:keys [name value]}] {(keyword name) value}))
        (apply merge)
        ((fn [m] (update m :user-id scr/string->uuid)))))
 
-(naive-coerce-in [{:name "user-id" :value "66679f70-96cc-11e5-837e-2380a99a9487"}
+(coerce-in [{:name "user-id" :value "66679f70-96cc-11e5-837e-2380a99a9487"}
                   {:name "name" :value "Keigo"}])
 
 
-(defn naive-coerce-out
+(defn coerce-out
   [data]
   (map (fn [[k v]] {:name (name k) :value (str v)}) data))
 
@@ -45,7 +45,7 @@
     (let [items (map
                   (fn [user]
                     {:href (b/path-for route-mapping :user :user-id (:user-id user))
-                     :data (naive-coerce-out user)})
+                     :data (coerce-out user)})
                   (:users @db))]
 
       {:status 200
@@ -69,11 +69,12 @@
   (fn [{:keys [body request-method uri] :as request}]
     (try+
      (let [data (-> body :template :data)
-           user (db/create-user! (naive-coerce-in data) db)]
+           user (db/create-user! (coerce-in data) db)
+           item {:href (b/path-for route-mapping :user :user-id (:user-id user))
+                 :data (coerce-out user)}]
 
        {:status 201
-        :body {:items [{:href (b/path-for route-mapping :user :user-id (:user-id user))
-                        :data (naive-coerce-out user)}]}})
+        :body {:items [item]}})
 
      (catch [:type :user-already-exists] _
        {:status 409
@@ -98,11 +99,10 @@
 
   (fn [{:keys [handler-key route-params] :as request}]
     (try+
-      (let [user-id (:user-id route-params)
-            item {:href (b/path-for route-mapping :user :user-id user-id)
-                  :data (-> (scr/string->uuid user-id)
-                            (db/get-user-by-user-id db)
-                            (naive-coerce-out))}]
+      (let [user-id (-> route-params :user-id scr/string->uuid)
+            user (db/get-user-by-user-id user-id db)
+            item {:href (b/path-for route-mapping :user :user-id (:user-id user))
+                  :data (coerce-out user)}]
 
         {:status 200
          :body {:items [item]}})
