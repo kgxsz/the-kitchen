@@ -6,7 +6,24 @@
             [bidi.bidi :as b]
             [clojure.string :refer [lower-case]]
             [schema.core :as sc]
+            [schema.coerce :as scr]
             [slingshot.slingshot :refer [try+]]))
+
+
+(defn naive-coerce-in
+  [data]
+  (->> data
+       (map (fn [{:keys [name value]}] {(keyword name) value}))
+       (apply merge)
+       ((fn [m] (update m :user-id scr/string->uuid)))))
+
+(naive-coerce-in [{:name "user-id" :value "66679f70-96cc-11e5-837e-2380a99a9487"}
+                  {:name "name" :value "Keigo"}])
+
+
+(defn naive-coerce-out
+  [data]
+  (map (fn [[k v]] {:name (name k) :value (str v)}) data))
 
 
 (defn wrap-users-collection
@@ -27,8 +44,8 @@
   (fn [{:keys [handler-key] :as request}]
     (let [items (map
                   (fn [user]
-                    {:href (str (b/path-for route-mapping :user :user-id (u/get-user-id user)))
-                     :data user})
+                    {:href (b/path-for route-mapping :user :user-id (:user-id user))
+                     :data (naive-coerce-out user)})
                   (:users @db))]
 
       {:status 200
@@ -52,12 +69,11 @@
   (fn [{:keys [body request-method uri] :as request}]
     (try+
      (let [data (-> body :template :data)
-           name (-> data first :value)
-           user (db/create-user! name db)]
+           user (db/create-user! (naive-coerce-in data) db)]
 
        {:status 201
-        :body {:items [{:href (b/path-for route-mapping :user :user-id (u/get-user-id user))
-                        :data user}]}})
+        :body {:items [{:href (b/path-for route-mapping :user :user-id (:user-id user))
+                        :data (naive-coerce-out user)}]}})
 
      (catch [:type :user-already-exists] _
        {:status 409
@@ -82,16 +98,18 @@
 
   (fn [{:keys [handler-key route-params] :as request}]
     (try+
-     (let [user-id (str (:user-id route-params))
-           item {:href (str (b/path-for route-mapping :user :user-id user-id))
-                 :data (db/get-user-by-user-id user-id db)}]
+      (let [user-id (:user-id route-params)
+            item {:href (b/path-for route-mapping :user :user-id user-id)
+                  :data (-> (scr/string->uuid user-id)
+                            (db/get-user-by-user-id db)
+                            (naive-coerce-out))}]
 
-       {:status 200
-        :body {:items [item]}})
+        {:status 200
+         :body {:items [item]}})
 
-     (catch [:type :user-not-found] _
-       {:status 404
-        :body {:error {:title "user-not-found" :code "404" :message "the user does not exist, or no longer exists"}}}))))
+      (catch [:type :user-not-found] _
+        {:status 404
+         :body {:error {:title "user-not-found" :code "404" :message "the user does not exist, or no longer exists"}}}))))
 
 (defn make-user-doc
   [route-mapping]
@@ -100,7 +118,7 @@
    :handler-doc {:summary "gets a specific user"
                  :description "gets a specific user"
                  :tags ["user"]
-                 :parameters {:path {:user-id sc/Num}}
+                 :parameters {:path {:user-id sc/Str}}
                  :responses {200 {:schema s/Collection
                                   :description "the user was retrieved successfully"}
                              404 {:schema s/Collection

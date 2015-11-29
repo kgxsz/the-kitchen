@@ -2,21 +2,6 @@
   (:require [clojure.string :refer [upper-case]]))
 
 
-(defn get-value
-  [user name]
-  (->> user (some #(when (= (:name %) name) %)) :value))
-
-
-(defn get-user-id
-  [user]
-  (get-value user "user-id"))
-
-
-(defn get-name
-  [user]
-  (get-value user "name"))
-
-
 (defn format-request-method
   [request-method]
   (-> request-method name upper-case))

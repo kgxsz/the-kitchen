@@ -9,6 +9,16 @@
             [yoyo.system :as ys]))
 
 
+(defn extract-value
+  [data name]
+  (->> data (some #(when (= (:name %) name) %)) :value))
+
+
+(defn extract-name
+  [user]
+  (extract-value user "name"))
+
+
 (defn extract-collection
   [body]
   (-> body (parse-string true) :collection))
@@ -84,7 +94,7 @@
                 {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template (extract-template body) {"name" "Peter"})})]
 
               (is (= 201 status) "the request gets a created response")
-              (is (= "Peter" (-> body extract-items first :data u/get-name)) "the response contains the created user")))
+              (is (= "Peter" (-> body extract-items first :data extract-name)) "the response contains the created user")))
 
 
         (testing "a user cannot be created more than once"
@@ -111,7 +121,7 @@
                 {:keys [status body]} @(http/get user-url {:headers get-headers})]
 
             (is (= 200 status) "the request gets an ok response")
-            (is (= "Peter" (-> body extract-items first :data u/get-name)) "the user's name is Peter")))
+            (is (= "Peter" (-> body extract-items first :data extract-name)) "the user's name is Peter")))
 
 
         (testing "A user's details can be updated")

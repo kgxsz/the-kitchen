@@ -23,6 +23,7 @@
                  [ring-cors "0.1.7"]
                  [ring/ring-json "0.4.0"]
                  [metrics-clojure "2.5.1"]
+                 [danlentz/clj-uuid "0.1.6"]
                  [org.slf4j/slf4j-log4j12 "1.7.1"]
                  [adzerk/boot-test "1.0.4" :scope "test"]])
 
