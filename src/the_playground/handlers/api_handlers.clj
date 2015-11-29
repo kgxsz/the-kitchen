@@ -15,7 +15,7 @@
   (fn [{:keys [handler-key] :as request}]
     (let [items (map
                   (fn [user]
-                    {:href (str (b/path-for route-mapping :user :user-id (db/get-user-id user)))
+                    {:href (str (b/path-for route-mapping :user :user-id (u/get-user-id user)))
                      :data user
                      :links []})
                   (:users @db))]
@@ -45,14 +45,14 @@
 
   (fn [{:keys [body request-method uri] :as request}]
     (try+
-     (let [data (-> body (get-in [:template :data]))
+     (let [data (-> body :template :data)
            name (-> data first :value)
            user (db/create-user! name db)]
 
        {:status 201
         :body {:collection {:version 1.0
                             :href (b/path-for route-mapping :users)
-                            :items [{:href (str (b/path-for route-mapping :user :user-id (db/get-user-id user)))
+                            :items [{:href (str (b/path-for route-mapping :user :user-id (u/get-user-id user)))
                                      :data user
                                      :links []}]}}})
 
@@ -61,7 +61,7 @@
         :body {:collection {:version 1.0
                             :href (b/path-for route-mapping :users)
                             :items []
-                            :errors [{:name "user-already-exists" :message "could not create a new user because the user already exists"}]}}}))))
+                            :error {:title "user-already-exists" :code "409" :message "could not create a new user because the user already exists"}}}}))))
 
 (defn make-create-user-doc
   [route-mapping]
@@ -97,7 +97,7 @@
         :body {:collection {:version 1.0
                             :href (b/path-for route-mapping :users)
                             :items []
-                            :errors [{:name "user-not-found" :message "the user does not exist, or no longer exists"}]}}}))))
+                            :error {:title "user-not-found" :code "404" :message "the user does not exist, or no longer exists"}}}}))))
 
 (defn make-user-doc
   [route-mapping]

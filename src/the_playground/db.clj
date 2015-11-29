@@ -1,27 +1,13 @@
 (ns the-playground.db
-  (:require [slingshot.slingshot :refer [throw+]]))
-
-
-(defn get-value
-  [user name]
-  (->> user (some #(when (= (:name %) name) %)) :value))
-
-
-(defn get-user-id
-  [user]
-  (get-value user "user-id"))
-
-
-(defn get-name
-  [user]
-  (get-value user "name"))
+  (:require [the-playground.util :as u]
+            [slingshot.slingshot :refer [throw+]]))
 
 
 (defn get-user-by-user-id
   [user-id db]
   (if-let [user (some
                  (fn [user]
-                   (when (= user-id (get-user-id user))
+                   (when (= user-id (u/get-user-id user))
                      user))
                  (:users @db))]
     user
@@ -30,7 +16,7 @@
 
 (defn user-exists?
   [name db]
-  (some #(= name (get-name %)) (:users @db)))
+  (some #(= name (u/get-name %)) (:users @db)))
 
 
 (defn create-user!
