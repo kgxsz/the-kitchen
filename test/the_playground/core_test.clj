@@ -19,11 +19,25 @@
   (-> body extract-collection :items))
 
 
+(defn extract-template
+  [body]
+  (-> body extract-collection :template))
+
+
+(defn extract-href
+  [body]
+  (-> body extract-collection :href))
+
+
+(defn extract-error
+  [body]
+  (-> body extract-collection :error))
+
+
 (defn fill-template
-  [body m]
-  (->> (parse-string body true)
-       :collection :template :data
-       (map (fn [d] (assoc d :value ((:name d) m))))
+  [template m]
+  (->> (:data template)
+       (map (fn [d] (assoc d :value (get m (:name d)))))
        (assoc-in {} [:template :data])
        (generate-string)))
 
@@ -67,7 +81,7 @@
 
         (testing "a user can be created"
           (let [{:keys [body]} @(http/get users-url {:headers get-headers})
-                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template body {"name" "Peter"})})]
+                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template (extract-template body) {"name" "Peter"})})]
 
               (is (= 201 status) "the request gets a created response")
               (is (= "Peter" (-> body extract-items first :data u/get-name)) "the response contains the created user")))
@@ -75,13 +89,16 @@
 
         (testing "a user cannot be created more than once"
           (let [{:keys [body]} @(http/get users-url {:headers get-headers})
-                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template body {:name "Peter"})})]
+                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template (extract-template body) {"name" "Peter"})})]
 
               (is (= 409 status) "The user creation gets a conflict response")
-              (is (= "user-already-exists" (-> body extract-collection :error :title)) "the response contains the error")))
+              (is (= "user-already-exists" (-> body extract-error :title)) "the response contains the error")))
 
 
-        (testing "the collection of users now contains a single user"
+        (testing "A user cannot be created when the template data is erroneous")
+
+
+        (testing "the collection of users now contains the created user"
           (let [{:keys [status body]} @(http/get users-url {:headers get-headers})]
 
             (is (= 200 status) "the request gets an ok response")
