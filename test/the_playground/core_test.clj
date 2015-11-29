@@ -23,7 +23,7 @@
   [body m]
   (->> (parse-string body true)
        :collection :template :data
-       (map (fn [{:keys [name] :as d}] (assoc d :value ((keyword name) m))))
+       (map (fn [d] (assoc d :value ((:name d) m))))
        (assoc-in {} [:template :data])
        (generate-string)))
 
@@ -67,7 +67,7 @@
 
         (testing "a user can be created"
           (let [{:keys [body]} @(http/get users-url {:headers get-headers})
-                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template body {:name "Peter"})})]
+                {:keys [status body]} @(http/post users-url {:headers post-headers :body (fill-template body {"name" "Peter"})})]
 
               (is (= 201 status) "the request gets a created response")
               (is (= "Peter" (-> body extract-items first :data u/get-name)) "the response contains the created user")))
