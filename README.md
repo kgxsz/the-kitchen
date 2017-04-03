@@ -1,6 +1,6 @@
-#The Playground 
+# The Playground 
 
-#####A repository to experiment and mess around with Swagger.
+##### A repository to experiment and mess around with Swagger.
 
 | SnapCI | Waffle | Swagger |
 | :----: | :----: | :-----: |
