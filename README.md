@@ -2,8 +2,8 @@
 
 ##### A repository to experiment and mess around with Swagger.
 
-| SnapCI | Waffle | Swagger |
-| :----: | :----: | :-----: |
+| SnapCI | Waffle |
+| :----: | :----: |
 | [![Build Status](https://snap-ci.com/kgxsz/the-playground/branch/master/build_image)](https://snap-ci.com/kgxsz/the-playground/branch/master) | [![Stories in Ready](https://badge.waffle.io/kgxsz/the-playground.svg?label=ready&title=Ready)](http://waffle.io/kgxsz/the-playground) |
 
 To see it in action, first hit the [API](https://kgxsz-the-playground.herokuapp.com) to get the dyno up and running, then you can hit the [Swagger Docs](http://petstore.swagger.io/?url=https://kgxsz-the-playground.herokuapp.com/api-docs)
